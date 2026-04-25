@@ -160,7 +160,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
 
     MY_IMAGE_IMPORT_BY_NAME* INTentry = NULL;
 
-    uint64_t ordinalFlag = 1ULL << 63; // shift left 63 bits to get 0b1{0*63}
+    uint64_t ordinalFlag = 1ULL << 63; // shift left 63 bits to get 0b1..(0*63)
 
     // Calculate Number of functions in DLL
     uint32_t count = 0;
