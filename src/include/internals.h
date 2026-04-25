@@ -49,7 +49,6 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
 
 
 //---DataDirectory[1] & (IAT/INT)-Parser-----------------
-
 TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPORT_DESCRIPTOR* pTempImportDescriptors); // OptionalHeader->DataDirectory[1].VirtualAddress        
 
 STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempParsedImportDescriptors);                 // Parse INT & IAT Per one Descriptor (one dll)

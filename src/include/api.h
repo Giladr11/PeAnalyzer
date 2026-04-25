@@ -44,12 +44,24 @@ typedef struct {
     uint32_t* AddressOfNameOrdinals;                           // Stores Ordinals which after conversation are then used as EAT[ordinal] to access the Exported Functions
 } PE_PARSED_EXPORT_DIRECTORY;                      
         
-// (INT/IAT) Per Imported DLL                      
+// (INT/IAT) Per Imported DLL
+// Per DLL Function
+typedef struct {
+    char* FunctionName;                                        // resolved name (if any)
+    uint16_t Ordinal;                                          // if ordinal import
+    uint8_t IsOrdinal;                                         // flag
+    uint64_t IATAddress;                                       // resolved runtime address slot
+} PE_PARSED_IMPORT_FUNCTION;
+
+// Per DLL
 typedef struct {                           
     char* DllName;                                             // Imported module name (DLL)
         
     MY_IMAGE_THUNK_DATA64* INT;                                // Import Name Table (OriginalFirstThunk) – requested imports (names/ordinals) in (.idata)
     MY_IMAGE_THUNK_DATA64* IAT;                                // Import Address Table (FirstThunk) – resolved function addresses at runtime in (.idata)   
+    
+    PE_PARSED_IMPORT_FUNCTION* Functions;                      // Parsed Functions in a Single DLL
+    uint32_t FunctionsCount;                                   // Functions Count in a Single DLL
 } PE_PARSED_IMPORT_DESCRIPTOR;             
 
 // Parsed PE (Import/Export) Analysis Results 
