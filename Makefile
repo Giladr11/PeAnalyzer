@@ -73,10 +73,10 @@ OBJECTS_C = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES_C))
 all: $(UTILS_OBJ) $(PE_ANLYZER_EXE)
 
 $(PE_ANLYZER_EXE): $(UTILS_OBJ) $(OBJECTS_C)  
-	$(GCC_CMD) -Isrc $(OBJECTS_C) -o $(PE_ANLYZER_EXE)
+	$(GCC_CMD) -g -O0 -Isrc $(OBJECTS_C) -o $(PE_ANLYZER_EXE)
  	
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c
-	$(GCC_CMD) -Isrc -c $< -o $@
+	$(GCC_CMD) -g -O0 -Isrc -c $< -o $@
 
 clean:
 	@echo "Cleaning '$(BUILD_DIR)' Directory..."

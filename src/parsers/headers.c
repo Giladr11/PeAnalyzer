@@ -6,17 +6,17 @@
 // DOS-Header Parser
 int DosHeaderParser(HANDLER* handler) 
 {
-    if (!IsValidRange(handler->PEDiskImage->DiskImageSize, 0, sizeof(MY_IMAGE_DOS_HEADER))) 
+    if (!IsValidRange(handler->DiskPEImage->DiskImageSize, 0, sizeof(MY_IMAGE_DOS_HEADER))) 
     {
         fprintf(stderr, "[-] Error: DOS header exceeds File bounds\n");
         return STATUS_ERROR;
     }
 
-    MY_IMAGE_DOS_HEADER* pTempDosHeader = (MY_IMAGE_DOS_HEADER*)handler->PEDiskImage->DiskImageBase;
+    MY_IMAGE_DOS_HEADER* pTempDosHeader = (MY_IMAGE_DOS_HEADER*)handler->DiskPEImage->DiskImageBase;
 
     // Validate the 'MZ' (0x5A4D) signature to confirm this is a valid Dos Header
     if (pTempDosHeader->e_magic != MY_IMAGE_DOS_SIGNATURE) {
-            fprintf(stderr, "[-] Error: Invalid Dos Header - e_magic is Incorrect..\n");
+            fprintf(stderr, "[-] Error: Invalid Dos Header - e_magic is Incorrect: 0x%X\n", pTempDosHeader->e_magic);
 
             return STATUS_ERROR;
     }
@@ -28,6 +28,8 @@ int DosHeaderParser(HANDLER* handler)
         return STATUS_ERROR;
     }
     
+    handler->PEContext->Headers = calloc(1, sizeof(PE_HEADERS_CONTEXT));
+
     // Map Dos-Header
     handler->PEContext->Headers->DosHeader = pTempDosHeader;
     
@@ -41,13 +43,13 @@ int NTHeadersParser(HANDLER* handler)
     uint32_t nt_offset = handler->PEContext->Headers->DosHeader->e_lfanew;
 
     // Verify the NT Headers offset and size fit within the actual file buffer to prevent out-of-bounds memory access
-    if (!IsValidRange(handler->PEDiskImage->DiskImageSize, nt_offset, sizeof(MY_IMAGE_NT_HEADERS64)))
+    if (!IsValidRange(handler->DiskPEImage->DiskImageSize, nt_offset, sizeof(MY_IMAGE_NT_HEADERS64)))
     {
         fprintf(stderr, "[-] Error: NT Headers exceed File Bounds\n");
         return STATUS_ERROR;
     }
 
-    MY_IMAGE_NT_HEADERS64* pTempNTHeaders = (MY_IMAGE_NT_HEADERS64*)(RVA_TO_VA(handler->PEDiskImage->DiskImageBase, nt_offset));
+    MY_IMAGE_NT_HEADERS64* pTempNTHeaders = (MY_IMAGE_NT_HEADERS64*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, nt_offset));
 
     // Validate the 'PE\0\0' (0x50450000) signature to confirm this is a valid PE file
     if (pTempNTHeaders->Signature != MY_IMAGE_NT_SIGNATURE)
@@ -75,6 +77,7 @@ int NTHeadersParser(HANDLER* handler)
         return STATUS_ERROR;
     }
 
+
     // Map NT-Headers
     handler->PEContext->Headers->NtHeaders = pTempNTHeaders;
     handler->PEContext->Headers->FileHeader = &pTempNTHeaders->FileHeader;
@@ -94,7 +97,7 @@ int NTHeadersParser(HANDLER* handler)
     
     // Detach double pointer to memory
     OptionalHeaderResults.Analysis = NULL;
-    
+
     return STATUS_SUCCESS;
 }
 
@@ -118,6 +121,8 @@ int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
         return STATUS_ERROR;
     }
     
+    fprintf(stdout, "[+] File Header Parsing completed Successfully!\n");
+
     return STATUS_SUCCESS;
 }
 
@@ -156,13 +161,11 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     {
         fprintf(stderr, "[*] Warning: DataDirectory has only (%u) entries (Standard is %u).\n", 
                 pTempOptionalHeader->NumberOfRvaAndSizes, MY_IMAGE_NUMBEROF_DIRECTORY_ENTRIES);
-
-        return ERROR_RESULT;
     }
     
     // Store (Import & Export) RVA to Access the Tabels in the PE Image
     uint32_t ExportDirectoryRVA = pTempOptionalHeader->DataDirectory[MY_IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    uint32_t ImportDescriptorRVA = pTempOptionalHeader->DataDirectory[MY_IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+    uint32_t ImportDescriptorsRVA = pTempOptionalHeader->DataDirectory[MY_IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
 
     // Initialize temps..
     MY_IMAGE_EXPORT_DIRECTORY* pTempExportDirectory = NULL;
@@ -170,17 +173,30 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
     TABLES_ANALYSIS_RESULTS TempExportResults = {0};       // Export Results from ParseExportDirectory()
     TABLES_ANALYSIS_RESULTS TempImportResults = {0};       // Import Results from ParseImportDescriptors()
-    TABLES_ANALYSIS_RESULTS OptionalHeaderResults = {0};   // Import & Export Final Results
+    TABLES_ANALYSIS_RESULTS OptionalHeaderResults = {0};  // Import & Export Final Results
 
     // Store (Import & Export) Table temps
     if (ExportDirectoryRVA) 
     {
-        pTempExportDirectory = (MY_IMAGE_EXPORT_DIRECTORY*)(RVA_TO_VA(handler->PEDiskImage->DiskImageBase, ExportDirectoryRVA));
+        fprintf(stdout, "[DEBUG] Export Directory RVA: 0x%X\n", ImportDescriptorsRVA);
+        
+        pTempExportDirectory = (MY_IMAGE_EXPORT_DIRECTORY*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, ExportDirectoryRVA));
+    }
+    else
+    {
+        fprintf(stderr, "[*] Warning: No Export Directory found (Export RVA = %u)\n", ExportDirectoryRVA);
     }
 
-    if (ImportDescriptorRVA) 
+    if (ImportDescriptorsRVA) 
     {
-        pTempImportDescriptors = (MY_IMAGE_IMPORT_DESCRIPTOR*)(RVA_TO_VA(handler->PEDiskImage->DiskImageBase, ImportDescriptorRVA));
+
+        fprintf(stdout, "[DEBUG] Import Descriptors RVA: 0x%X\n", ImportDescriptorsRVA);
+
+        pTempImportDescriptors = (MY_IMAGE_IMPORT_DESCRIPTOR*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, ImportDescriptorsRVA));
+    }
+    else
+    {
+        fprintf(stdout, "[*] Warning: PE does not contain an Import Table (RVA = 0)\n");
     }
     
     // Execute (Export Directory) Parser 
@@ -249,6 +265,8 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
         // Free temporary container (no longer owns any heap data)
         free(TempImportResults.Analysis);
     }
+
+    fprintf(stdout, "[+] Optional Header Parsing completed Successfully!\n");
 
     return OptionalHeaderResults;
 }

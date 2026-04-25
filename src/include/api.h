@@ -11,7 +11,7 @@
 typedef struct {
     uint8_t* DiskImageBase;
     size_t DiskImageSize;
-} PE_IMAGE;
+} PE_DISK_IMAGE;
 
 typedef struct {
     // DOS
@@ -22,9 +22,9 @@ typedef struct {
     MY_IMAGE_FILE_HEADER* FileHeader;
     MY_IMAGE_OPTIONAL_HEADER64* OptionalHeader;
 
-    // Directories
-    MY_IMAGE_IMPORT_DESCRIPTOR* ImportDescriptors;
+    // DataDirectory Indexes
     MY_IMAGE_EXPORT_DIRECTORY* ExportDirectory;
+    MY_IMAGE_IMPORT_DESCRIPTOR* ImportDescriptors;
 
     // Sections
     MY_IMAGE_SECTION_HEADER* SectionHeaders;
@@ -74,6 +74,11 @@ typedef struct {
 
 //-----------------------------------------------------
 
+typedef enum {
+    STATUS_SUCCESS  = 0,
+    STATUS_ERROR    = -1
+} STATUS;
+
 // Parser Object
 typedef struct {                
     PE_HEADERS_CONTEXT* Headers;                               // Raw PE structures (headers, sections, directories as parsed from the binary)    
@@ -81,14 +86,15 @@ typedef struct {
 } PE_CONTEXT;                          
      
 typedef struct {                           
-    PE_IMAGE* PEDiskImage;                                     // Raw PE File
+    PE_DISK_IMAGE* DiskPEImage;                                     // Raw PE File
     PE_CONTEXT* PEContext;                                     // Parsed PE File
 } HANDLER;
 
 
 //------------------------------------Public-APIs-------------------------------------
 // Core
-int LoadDiskPEImage();
+void* LoadPEDiskImage(char* PEpath, size_t* outSizes);
+HANDLER* CreateHandler(void* base, size_t size);
 
 // Main Parser
 int MainPEHeadersParser(HANDLER* handler);                     // Headers Parsing *(Executing the Parsers)*
@@ -98,3 +104,4 @@ int MainPEContextDumper(PE_CONTEXT* PEContext);                // PE Dumping *(P
 
 // Ownership Models
 void FreeAnalysis(ANALYSIS_CONTEXT* a);
+void FreeParsedExportDirectoryAnalysis(PE_PARSED_EXPORT_DIRECTORY* a);

@@ -13,11 +13,6 @@
 
 //--------------------------------Internal-Structs--------------------------------------
 
-typedef enum {
-    STATUS_SUCCESS  = 0,
-    STATUS_ERROR    = -1
-} STATUS;
-
 typedef struct {
     MY_IMAGE_EXPORT_DIRECTORY* ExportDirectory;        // Pointer to raw Export Directory (DataDirectory[0])
     MY_IMAGE_IMPORT_DESCRIPTOR* ImportDescriptors;     // Pointer to raw Import Descriptors array (DataDirectory[1])

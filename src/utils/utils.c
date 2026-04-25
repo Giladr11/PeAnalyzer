@@ -1,4 +1,5 @@
 #include "include/internals.h"
+#include <stdlib.h> 
 
 
 //===================================================================Helpers-Methods===================================================================
@@ -6,8 +7,8 @@
 // Extract DOS-Stub Header 
 int ExtractDosStub(HANDLER* handler) 
 {
-    uint8_t* stub_start = (uint8_t*)handler->PEDiskImage->DiskImageBase + sizeof(MY_IMAGE_DOS_HEADER);
-    uint8_t* stub_end = RVA_TO_VA(handler->PEDiskImage->DiskImageBase, handler->PEContext->Headers->DosHeader->e_lfanew);
+    uint8_t* stub_start = (uint8_t*)handler->DiskPEImage->DiskImageBase + sizeof(MY_IMAGE_DOS_HEADER);
+    uint8_t* stub_end = RVA_TO_VA(handler->DiskPEImage->DiskImageBase, handler->PEContext->Headers->DosHeader->e_lfanew);
 
     const char* target = "This program cannot be run in DOS mode.";
     size_t target_size = strlen(target);
@@ -55,7 +56,7 @@ void FreeAnalysis(ANALYSIS_CONTEXT* a) {
         {
             free(a->ParsedImportDescriptors[i].Functions);
         }
-        
+
         free(a->ParsedImportDescriptors);
     }
     

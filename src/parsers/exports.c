@@ -35,6 +35,9 @@ TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_
        
     if (!pTempAnalysisExportResult)
     {   
+        free(pTempAnalysis);
+        free(pTempAnalysisExportResult->ParsedExportDirectory);
+        free(pTempAnalysisExportResult);
         return ERROR_RESULT;
     }
 
@@ -45,6 +48,8 @@ TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_
 
     // Free temporary container (no longer owns any heap data)
     free(pTempAnalysisExportResult);
+
+    fprintf(stdout, "[+] Export Directories Parsing completed Successfully\n");
 
     return (TABLES_ANALYSIS_RESULTS){
         .ExportDirectory   = pTempExportDirectory,
@@ -60,15 +65,15 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
     ANALYSIS_CONTEXT* ERROR_RESULT = NULL;
 
     // Resolve EAT VA 
-    uint32_t* TempEAT = (uint32_t*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase,
+    uint32_t* TempEAT = (uint32_t*)RVA_TO_VA(handler->DiskPEImage->DiskImageBase,
                                              pTempExportDirectory->AddressOfFunctions);
     
     // Resolve AddressOfNames VA
-    uint32_t* TempAddressOfNames = (uint32_t*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase,
+    uint32_t* TempAddressOfNames = (uint32_t*)RVA_TO_VA(handler->DiskPEImage->DiskImageBase,
                                                         pTempExportDirectory->AddressOfNames);
     
     // Resolve AddressOfNameOrdinals VA
-    uint32_t* TempAddressOfNameOrdinals = (uint32_t*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase,
+    uint32_t* TempAddressOfNameOrdinals = (uint32_t*)RVA_TO_VA(handler->DiskPEImage->DiskImageBase,
                                                                pTempExportDirectory->AddressOfNameOrdinals);
     
     // Array Sizes
@@ -81,7 +86,7 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
     // Store results in ParsedExportDirectoryResults.Analysis->ParsedExportDirectory->EAT ParsedExportDirectoryResults.Analysis->ParsedExportDirectory->EATCount 
     for (uint32_t i = 0; i < NamesTableCount; i++)
     {
-        char* name = (char*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, TempAddressOfNames[i]);
+        char* name = (char*)RVA_TO_VA(handler->DiskPEImage->DiskImageBase, TempAddressOfNames[i]);
 
         if (name && name[0] != '\0')
         {
@@ -103,7 +108,7 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
             //                                                                                                                        //
             // if (strcmp(name, "GetTickCount") == 0)                                                                                 //
             // {                                                                                                                      //
-            //     DWORD (*GetTickCount)(void)= (DWORD(*)(void))((uint8_t*)handler->PEDiskImage->DiskImageBase + TempEAT[EATindex]);  //
+            //     DWORD (*GetTickCount)(void)= (DWORD(*)(void))((uint8_t*)handler->DiskPEImage->DiskImageBase + TempEAT[EATindex]);  //
             //       ^           ^         ^                                                                                          //
             //       |           |         |                                                                                          //
             //  (Return Type) (Name) (no Arguments)                                                                                   //
@@ -135,7 +140,6 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
     pTempAnalysisExportResult->ParsedExportDirectory = calloc(1, sizeof(PE_PARSED_EXPORT_DIRECTORY)); // free in main()
     if (!pTempAnalysisExportResult->ParsedExportDirectory) 
     {
-        free(pTempAnalysisExportResult);
         return ERROR_RESULT;
     }
 

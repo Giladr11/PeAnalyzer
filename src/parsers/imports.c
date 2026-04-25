@@ -1,24 +1,69 @@
 #include "include/internals.h"
 
+#define MAX_IMPORT_DESCRIPTORS 4096
+
 
 //============================================================Imports-Parsers============================================================
 
-static uint32_t GetImportDescriptorsCount(MY_IMAGE_IMPORT_DESCRIPTOR* desc)
+static uint32_t GetImportDescriptorsCount(MY_IMAGE_IMPORT_DESCRIPTOR* desc, uint8_t* base, size_t size)
 {
-    if (!desc)
+    uint32_t count = 0;
+
+    for (uint32_t i = 0; i < MAX_IMPORT_DESCRIPTORS; i++)
     {
-        return 0;
+        if (!desc)
+            break;
+
+        // validate descriptor memory range
+        if ((uint8_t*)desc < base ||
+            (uint8_t*)desc + sizeof(MY_IMAGE_IMPORT_DESCRIPTOR) > base + size)
+        {
+            break;
+        }
+
+        if (desc->Name == 0 &&
+            desc->FirstThunk == 0 &&
+            desc->OriginalFirstThunk == 0)
+        {
+            break;
+        }
+
+        count++;
+        desc++;
     }
 
-    uint32_t ImportDescsCount = 0;
-    
-    while (desc->Name != 0)
+    return count;
+}
+
+void* RVA_TO_RAW(HANDLER* handler, uint32_t rva)
+{
+    uint8_t* base = handler->DiskPEImage->DiskImageBase;
+
+    MY_IMAGE_DOS_HEADER* dos = (MY_IMAGE_DOS_HEADER*)base;
+    MY_IMAGE_NT_HEADERS64* nt =
+        (MY_IMAGE_NT_HEADERS64*)(base + dos->e_lfanew);
+
+    MY_IMAGE_SECTION_HEADER* sec =
+        (MY_IMAGE_SECTION_HEADER*)
+        ((uint8_t*)&nt->OptionalHeader +
+         nt->FileHeader.SizeOfOptionalHeader);
+
+    uint16_t n = nt->FileHeader.NumberOfSections;
+
+    for (uint16_t i = 0; i < n; i++)
     {
-        ImportDescsCount++;
-        desc++;    
+        uint32_t va   = sec[i].VirtualAddress;
+        uint32_t size = sec[i].Misc.VirtualSize;
+        uint32_t raw  = sec[i].PointerToRawData;
+
+        if (rva >= va && rva < va + size)
+        {
+            uint32_t offset = raw + (rva - va);
+            return base + offset;
+        }
     }
-    
-    return ImportDescsCount;
+
+    return NULL;
 }
 
 // Import Descriptors Parser *(INT/IAT per DLL)* 
@@ -29,17 +74,31 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     ANALYSIS_CONTEXT* pTempAnalysisImportResult = calloc(1, sizeof(ANALYSIS_CONTEXT));
     if (!pTempAnalysisImportResult) 
     {
+        fprintf(stderr, "[-] ImportDescriptorsParser: pTempAnalysisImportResult is NULL\n");
         return ERROR_RESULT;
     }
 
     // Calculate Number of Import Descriptors
     MY_IMAGE_IMPORT_DESCRIPTOR* pImportdescriptors = pTempImportDescriptors;
+    if (!pImportdescriptors)
+    {
+        fprintf(stderr, "[-] ImportDescriptorsParser: pTempImportDescriptors is NULL\n");
 
-    uint32_t TempImportDescsCount = GetImportDescriptorsCount(pImportdescriptors);
+        free(pTempAnalysisImportResult);
+        return ERROR_RESULT;
+    }
+
+    uint32_t TempImportDescsCount = GetImportDescriptorsCount(
+                                        pImportdescriptors,
+                                        handler->DiskPEImage->DiskImageBase,
+                                        handler->DiskPEImage->DiskImageSize
+                                    );
 
     if (!TempImportDescsCount)
     {
         fprintf(stderr, "[-] Error: No import descriptors found\n");
+
+        free(pTempAnalysisImportResult);
         return ERROR_RESULT;
     }
     
@@ -54,15 +113,29 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     MY_IMAGE_THUNK_DATA64* TempINT = NULL;
     MY_IMAGE_THUNK_DATA64* TempIAT = NULL;
 
-
+    uint8_t* base = handler->DiskPEImage->DiskImageBase;
+    
     for (uint32_t i = 0; i < TempImportDescsCount; i++)
-    {
-        char* dllName = (char*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, pImportdescriptors->Name);
+    {   
+        uint8_t* addr = RVA_TO_RAW(handler, pImportdescriptors->Name);
+
+        if (!addr || addr < base || addr >= base + handler->DiskPEImage->DiskImageSize)
+        {
+            fprintf(stderr, "[-] Invalid Name RVA\n");
+
+            free(pTempAnalysisImportResult->ParsedImportDescriptors);
+            free(pTempAnalysisImportResult);
+            return ERROR_RESULT;
+        }
+
+        char* dllName = (char*)RVA_TO_RAW(handler, pImportdescriptors->Name);
 
         if (!dllName || dllName[0] == '\0')
         {
             fprintf(stderr, "[-] Error: DLL Name Doesnt Exist..\n");
 
+            free(pTempAnalysisImportResult->ParsedImportDescriptors);
+            free(pTempAnalysisImportResult);
             return ERROR_RESULT;
         }
 
@@ -74,14 +147,16 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         {
             fprintf(stderr, "[-] Error: Invalid IAT RVA..\n");
 
+            free(pTempAnalysisImportResult->ParsedImportDescriptors);
+            free(pTempAnalysisImportResult);
             return ERROR_RESULT;
         }
 
-        TempIAT = (MY_IMAGE_THUNK_DATA64*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, IAT_RVA);
+        TempIAT = (MY_IMAGE_THUNK_DATA64*)RVA_TO_RAW(handler, IAT_RVA);
 
         if (INT_RVA)
         {
-            TempINT = (MY_IMAGE_THUNK_DATA64*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, INT_RVA);
+            TempINT = (MY_IMAGE_THUNK_DATA64*)RVA_TO_RAW(handler, INT_RVA);
         }    
         else {
             fprintf(stderr, "[*] Warning: Missing INT, using IAT as fallback..\n");
@@ -110,6 +185,9 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
                 free(pTempParsedImportDescriptor.Functions);
             }
 
+            free(pTempAnalysisImportResult->ParsedImportDescriptors);
+            free(pTempAnalysisImportResult);
+
             return ERROR_RESULT;
         }
 
@@ -118,7 +196,9 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         // Move to the next Import Descriptor in memory..
         pImportdescriptors++;
     }
-        
+    
+    fprintf(stdout, "[+] Import Descriptors parsing completed Successfully\n");
+
     return (TABLES_ANALYSIS_RESULTS){
         .ImportDescsCount  = TempImportDescsCount,
         .Analysis          = pTempAnalysisImportResult,
@@ -133,7 +213,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     {
         fprintf(stderr,
             "[-] Error: pTempParsedImportDescriptor is NULL\n");
-
+        
         return STATUS_ERROR;
     }
 
@@ -203,7 +283,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
         }
         else
         {
-            INTentry = (MY_IMAGE_IMPORT_BY_NAME*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, value);
+            INTentry = (MY_IMAGE_IMPORT_BY_NAME*)RVA_TO_RAW(handler, value);
 
             if (!INTentry || !INTentry->Name)
             {
