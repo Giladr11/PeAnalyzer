@@ -66,7 +66,7 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         };
 
         // Parse INT & IAT for A DLL
-        STATUS status = ParseThunkTables(handler, &TempImportDescriptor);
+        STATUS status = ThunkTablesParser(handler, &TempImportDescriptor);
 
         if (status == STATUS_ERROR)
         {

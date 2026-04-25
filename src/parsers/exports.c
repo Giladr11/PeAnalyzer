@@ -31,7 +31,7 @@ TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_
         return ERROR_RESULT;
     }
     
-    pTempAnalysisExportResult = ParseEAT(handler, pTempExportDirectory);
+    pTempAnalysisExportResult = EATParser(handler, pTempExportDirectory);
        
     if (!pTempAnalysisExportResult)
     {   
