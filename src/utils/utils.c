@@ -47,7 +47,18 @@ int IsValidRange(size_t DiskImageSize, uint32_t offset, uint32_t size)
 void FreeAnalysis(ANALYSIS_CONTEXT* a) {
     if (!a) return;
 
-    free(a->ParsedExportDirectory);
+    if (a->ParsedExportDirectory) {free(a->ParsedExportDirectory);}
+
+    if (a->ParsedImportDescriptors)
+    {
+        for (uint32_t i = 0; i < a->ImportDescsCount; i++)
+        {
+            free(a->ParsedImportDescriptors[i].Functions);
+        }
+        
+        free(a->ParsedImportDescriptors);
+    }
+    
     free(a->ParsedImportDescriptors);
     free(a);
 }

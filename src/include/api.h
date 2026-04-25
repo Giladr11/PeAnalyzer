@@ -68,6 +68,8 @@ typedef struct {
 typedef struct {                
     PE_PARSED_EXPORT_DIRECTORY* ParsedExportDirectory;         // Export Address Table (EAT) analysis results
     PE_PARSED_IMPORT_DESCRIPTOR* ParsedImportDescriptors;      // Per-DLL import entries (INT/IAT grouped per module) analysis results
+
+    uint32_t ImportDescsCount;                                 // Number of Import Descriptors
 } ANALYSIS_CONTEXT;             
 
 //-----------------------------------------------------

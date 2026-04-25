@@ -3,19 +3,19 @@
 
 //============================================================Imports-Parsers============================================================
 
-static uint32_t GetImportDescriptorsCount(MY_IMAGE_IMPORT_DESCRIPTOR* pTempImportDescriptors)
+static uint32_t GetImportDescriptorsCount(MY_IMAGE_IMPORT_DESCRIPTOR* desc)
 {
-    if (!pTempImportDescriptors)
+    if (!desc)
     {
         return 0;
     }
 
     uint32_t ImportDescsCount = 0;
-
-    while (pTempImportDescriptors->Name != 0)
+    
+    while (desc->Name != 0)
     {
         ImportDescsCount++;
-        pTempImportDescriptors++;    
+        desc++;    
     }
     
     return ImportDescsCount;
@@ -33,10 +33,18 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     }
 
     // Calculate Number of Import Descriptors
-    uint32_t ImportDescsCount = GetImportDescriptorsCount(pTempImportDescriptors);
+    MY_IMAGE_IMPORT_DESCRIPTOR* pImportdescriptors = pTempImportDescriptors;
 
+    uint32_t TempImportDescsCount = GetImportDescriptorsCount(pImportdescriptors);
+
+    if (!TempImportDescsCount)
+    {
+        fprintf(stderr, "[-] Error: No import descriptors found\n");
+        return ERROR_RESULT;
+    }
+    
     // Allocate inner ParsedImportDescriptors
-    pTempAnalysisImportResult->ParsedImportDescriptors = calloc(ImportDescsCount, sizeof(PE_PARSED_IMPORT_DESCRIPTOR)); // free in main()
+    pTempAnalysisImportResult->ParsedImportDescriptors = calloc(TempImportDescsCount, sizeof(PE_PARSED_IMPORT_DESCRIPTOR)); // free in main()
     if (!pTempAnalysisImportResult->ParsedImportDescriptors) 
     {
         free(pTempAnalysisImportResult);
@@ -46,9 +54,10 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     MY_IMAGE_THUNK_DATA64* TempINT = NULL;
     MY_IMAGE_THUNK_DATA64* TempIAT = NULL;
 
-    for (uint32_t i = 0; i < ImportDescsCount; i++)
+
+    for (uint32_t i = 0; i < TempImportDescsCount; i++)
     {
-        char* dllName = (char*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, pTempImportDescriptors->Name);
+        char* dllName = (char*)RVA_TO_VA(handler->PEDiskImage->DiskImageBase, pImportdescriptors->Name);
 
         if (!dllName || dllName[0] == '\0')
         {
@@ -58,10 +67,10 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         }
 
         // Map INT & IAT 
-        uint32_t INT_RVA = pTempImportDescriptors->OriginalFirstThunk;
-        uint32_t IAT_RVA = pTempImportDescriptors->FirstThunk;
+        uint32_t INT_RVA = pImportdescriptors->OriginalFirstThunk;
+        uint32_t IAT_RVA = pImportdescriptors->FirstThunk;
 
-        if (pTempImportDescriptors->FirstThunk == 0)
+        if (pImportdescriptors->FirstThunk == 0)
         {
             fprintf(stderr, "[-] Error: Invalid IAT RVA..\n");
 
@@ -107,10 +116,11 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         pTempAnalysisImportResult->ParsedImportDescriptors[i] = pTempParsedImportDescriptor;
         
         // Move to the next Import Descriptor in memory..
-        pTempImportDescriptors++;
+        pImportdescriptors++;
     }
         
     return (TABLES_ANALYSIS_RESULTS){
+        .ImportDescsCount  = TempImportDescsCount,
         .Analysis          = pTempAnalysisImportResult,
         .status            = STATUS_SUCCESS
     };
@@ -150,7 +160,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
 
     MY_IMAGE_IMPORT_BY_NAME* INTentry = NULL;
 
-    uint64_t ordinalFlag = 1ULL << 63;
+    uint64_t ordinalFlag = 1ULL << 63; // shift left 63 bits to get 0b1{0*63}
 
     // Calculate Number of functions in DLL
     uint32_t count = 0;
@@ -164,7 +174,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     pTempParsedImportDescriptor->FunctionsCount = count;
     
     // Allocate Functions Array
-    pTempParsedImportDescriptor->Functions = calloc(count, sizeof(PE_PARSED_IMPORT_FUNCTION));
+    pTempParsedImportDescriptor->Functions = calloc(count, sizeof(PE_PARSED_IMPORT_FUNCTION)); // free in main()
     if (!pTempParsedImportDescriptor->Functions)
     {
         fprintf(stderr, "[-] Error: Failed to allocate Functions array\n");
@@ -180,6 +190,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     {
         uint64_t value = INTthunks[i].u1.AddressOfData;
 
+        // MSB set → ordinal import (not import-by-name struct)
         if (value & ordinalFlag)
         {
             uint16_t ordinal = (uint16_t)(value & 0xFFFF);

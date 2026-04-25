@@ -21,6 +21,7 @@ typedef enum {
 typedef struct {
     MY_IMAGE_EXPORT_DIRECTORY* ExportDirectory;        // Pointer to raw Export Directory (DataDirectory[0])
     MY_IMAGE_IMPORT_DESCRIPTOR* ImportDescriptors;     // Pointer to raw Import Descriptors array (DataDirectory[1])
+    uint32_t ImportDescsCount;                         // Number of Import Descriptors
 
     ANALYSIS_CONTEXT* Analysis;                        // Parsed (Import/Export) Analysis results (EAT & (INT/IAT per-DLL))
 
