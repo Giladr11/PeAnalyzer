@@ -155,8 +155,8 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     // Store (Import & Export) Table temps
     if (ExportDirectoryRVA) 
     {
-        fprintf(stdout, "[DEBUG] base image is at: %p\n", pTempOptionalHeader->ImageBase);
-        fprintf(stdout, "[DEBUG] Export Directories RVA: 0x%X\n", ExportDirectoryRVA);
+        //fprintf(stdout, "[DEBUG] base image is at: %p\n", pTempOptionalHeader->ImageBase);
+        //fprintf(stdout, "[DEBUG] Export Directories RVA: 0x%X\n", ExportDirectoryRVA);
 
         uint32_t offset = RvaToOffset(
             ExportDirectoryRVA,
@@ -172,11 +172,10 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
         pTempExportDirectory = (MY_IMAGE_EXPORT_DIRECTORY*)(handler->DiskPEImage->DiskImageBase + offset);
 
-        
-        fprintf(stderr,
-            "[DEBUG] Export Directories (file ptr): %p | RVA: 0x%X\n",
-            pTempExportDirectory,
-            ExportDirectoryRVA);
+        //fprintf(stderr,
+        //    "[DEBUG] Export Directories (file ptr): %p | RVA: 0x%X\n",
+        //    pTempExportDirectory,
+        //    ExportDirectoryRVA);
             
     }
     else
@@ -186,8 +185,8 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
     if (ImportDescriptorsRVA) 
     {
-        fprintf(stdout, "[DEBUG] base image is at: %p\n", pTempOptionalHeader->ImageBase);
-        fprintf(stdout, "[DEBUG] Import Descriptors RVA: 0x%X\n", ImportDescriptorsRVA);
+        //fprintf(stdout, "[DEBUG] base image is at: %p\n", pTempOptionalHeader->ImageBase);
+        //fprintf(stdout, "[DEBUG] Import Descriptors RVA: 0x%X\n", ImportDescriptorsRVA);
 
         uint32_t offset = RvaToOffset(
             ImportDescriptorsRVA,
@@ -203,16 +202,15 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
         pTempImportDescriptors = (MY_IMAGE_IMPORT_DESCRIPTOR*)(handler->DiskPEImage->DiskImageBase + offset);
 
-        
-        fprintf(stderr,
-            "[DEBUG] Import Descriptors (file ptr): %p | RVA: 0x%X\n",
-            pTempImportDescriptors,
-            ImportDescriptorsRVA);
-            }
+        //fprintf(stderr,
+        //    "[DEBUG] Import Descriptors (file ptr): %p | RVA: 0x%X\n",
+        //    pTempImportDescriptors,
+        //    ImportDescriptorsRVA);
+    }
     
     else
     {
-        fprintf(stdout, "[*] Warning: PE does not contain an Import Table (RVA = 0)\n");
+        fprintf(stdout, "[*] Warning: No Import Descriptors found (Import RVA = %u)\n", ImportDescriptorsRVA);
     }
     
     // Execute (Export Directory) Parser 
@@ -222,6 +220,8 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
         if (TempExportResults.status == STATUS_SUCCESS)
         {
+            fprintf(stdout, "[+] Export Directories parsing completed Successfully!\n");
+
             OptionalHeaderResults.ExportDirectory = pTempExportDirectory;
         }
         else
@@ -242,6 +242,8 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
         if (TempImportResults.status == STATUS_SUCCESS)
         {
+            fprintf(stdout, "[+] Import Descriptors parsing completed Successfully!\n");
+
             OptionalHeaderResults.ImportDescriptors = pTempImportDescriptors;
         }
         else

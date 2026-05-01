@@ -13,7 +13,7 @@ int SectionHeadersParser(HANDLER* handler)
 
     uint16_t NumberOfSections = handler->PEContext->Headers->FileHeader->NumberOfSections;
 
-    fprintf(stdout, "[DEBUG] Number of Sections: %hu\n", NumberOfSections);
+    //fprintf(stdout, "[DEBUG] Number of Sections: %hu\n", NumberOfSections);
 
     if (NumberOfSections == 0 || NumberOfSections > 96)
     {
@@ -82,7 +82,7 @@ int SectionHeadersParser(HANDLER* handler)
 
         handler->PEContext->Headers->SectionHeaders[i] = pTempSectionHeader[i];
         
-        printf("[DEBUG] Section NAME: %s\n", pTempSectionHeader[i].Name);
+        //printf("[DEBUG] Section NAME: %s\n", pTempSectionHeader[i].Name);
     }
 
     return STATUS_SUCCESS;

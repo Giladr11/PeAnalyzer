@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 
     if (status == STATUS_SUCCESS)
     {
-        fprintf(stdout, "[+] Headers Parsing Finished Succesfully!..\n");
+        fprintf(stdout, "[+] Headers Parsing Finished Succesfully!\n");
     }
     else 
     {

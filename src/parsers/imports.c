@@ -98,7 +98,7 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
 
         char* dllName = (char*)addr;
 
-        fprintf(stderr, "[DEBUG] dll index: (%d), dll name: %s\n", i, dllName);
+        //fprintf(stderr, "[DEBUG] dll index: (%d), dll name: %s\n", i, dllName);
 
         if (!dllName || dllName[0] == '\0')
         {
@@ -164,8 +164,6 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
 
         STATUS status = ThunkTablesParser(handler, pDesc);
     }
-    
-    fprintf(stdout, "[+] Import Descriptors parsing completed Successfully\n");
 
     return (TABLES_ANALYSIS_RESULTS){
         .ImportDescsCount  = TempImportDescsCount,
@@ -238,44 +236,44 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     {
         uint64_t value = INTthunks[i].u1.AddressOfData;
 
-        fprintf(stderr,
-            "\n[DEBUG] ==== THUNK %u ====\n"
-            "[DEBUG] INT thunk ptr      : %p\n"
-            "[DEBUG] raw thunk value    : 0x%016llX\n",
-            i,
-            &INTthunks[i],
-            (unsigned long long)value
-        );
+        //fprintf(stderr,
+        //    "\n[DEBUG] ==== THUNK %u ====\n"
+        //    "[DEBUG] INT thunk ptr      : %p\n"
+        //    "[DEBUG] raw thunk value    : 0x%016llX\n",
+        //    i,
+        //    &INTthunks[i],
+        //    (unsigned long long)value
+        //);
 
         // ordinal import
         if (value & ordinalFlag)
         {
             uint16_t ordinal = (uint16_t)(value & 0xFFFF);
 
-            fprintf(stderr,
-                "[DEBUG] ordinal import detected\n"
-                "[DEBUG] ordinal = %hu\n",
-                ordinal
-            );
+            //fprintf(stderr,
+            //    "[DEBUG] ordinal import detected\n"
+            //    "[DEBUG] ordinal = %hu\n",
+            //    ordinal
+            //);
 
             pTempFunctions[i].IsOrdinal = 1;
             pTempFunctions[i].Ordinal = ordinal;
             pTempFunctions[i].FunctionName = NULL;
 
-            fprintf(stdout,
-                "[+] Importing DLL Function Using ordinal: %hu\n",
-                ordinal
-            );
+            //fprintf(stdout,
+            //    "[+] Importing DLL Function Using ordinal: %hu\n",
+            //    ordinal
+            //);
         }
         else
         {
             uint32_t nameRva = (uint32_t)value;
 
-            fprintf(stderr,
-                "[DEBUG] import-by-name\n"
-                "[DEBUG] Name RVA = 0x%08X\n",
-                nameRva
-            );
+            //fprintf(stderr,
+            //    "[DEBUG] import-by-name\n"
+            //    "[DEBUG] Name RVA = 0x%08X\n",
+            //    nameRva
+            //);
 
             uint32_t offset = RvaToOffset(
                 nameRva,
@@ -283,10 +281,10 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
                 handler->PEContext->Headers->FileHeader->NumberOfSections
             );
 
-            fprintf(stderr,
-                "[DEBUG] file offsetset = 0x%08X\n",
-                offset
-            );
+            //fprintf(stderr,
+            //    "[DEBUG] file offsetset = 0x%08X\n",
+            //    offset
+            //);
 
             if (offset == 0 || offset >= handler->DiskPEImage->DiskImageSize)
             {
@@ -305,16 +303,16 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
             INTentry = (MY_IMAGE_IMPORT_BY_NAME*)
                 (handler->DiskPEImage->DiskImageBase + offset);
 
-            fprintf(stderr,
-                "[DEBUG] INTentry ptr = %p\n"
-                "[DEBUG] hint         = 0x%04X\n"
-                "[DEBUG] name ptr     = %p\n"
-                "[DEBUG] name         = %s\n",
-                INTentry,
-                INTentry->hint,
-                INTentry->Name,
-                INTentry->Name
-            );
+            //fprintf(stderr,
+            //    "[DEBUG] INTentry ptr = %p\n"
+            //    "[DEBUG] hint         = 0x%04X\n"
+            //    "[DEBUG] name ptr     = %p\n"
+            //    "[DEBUG] name         = %s\n",
+            //    INTentry,
+            //    INTentry->hint,
+            //    INTentry->Name,
+            //    INTentry->Name
+            //);
 
             if (!INTentry || !INTentry->Name)
             {
@@ -329,21 +327,21 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
             pTempFunctions[i].Ordinal = 0;
             pTempFunctions[i].FunctionName = INTentry->Name;
 
-            fprintf(stdout,
-                "[+] Importing DLL Function Using a Name: %s\n",
-                pTempFunctions[i].FunctionName
-            );
+            //fprintf(stdout,
+            //    "[+] Importing DLL Function Using a Name: %s\n",
+            //    pTempFunctions[i].FunctionName
+            //);
         }
 
         uint64_t IATFunction = IATthunks[i].u1.Function;
         pTempFunctions[i].IATAddress = IATFunction;
 
-        fprintf(stderr,
-            "[DEBUG] IAT thunk ptr      : %p\n"
-            "[DEBUG] IAT function value : 0x%016llX\n",
-            &IATthunks[i],
-            (unsigned long long)IATFunction
-        );
+        //fprintf(stderr,
+        //    "[DEBUG] IAT thunk ptr      : %p\n"
+        //    "[DEBUG] IAT function value : 0x%016llX\n",
+        //    &IATthunks[i],
+        //    (unsigned long long)IATFunction
+        //);
 
         if (!IATFunction)
         {

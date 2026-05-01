@@ -21,7 +21,7 @@ int MainPEHeadersParser(HANDLER* handler)
         return STATUS_ERROR;
     }
     
-    fprintf(stdout, "[+] Sections Parsing completed Successfully\n");
+    fprintf(stdout, "[+] Sections Parsing completed Successfully!\n");
 
 
     // Optional Header Parsing
@@ -32,12 +32,12 @@ int MainPEHeadersParser(HANDLER* handler)
 
     if (OptionalHeaderResults.status == STATUS_ERROR)
     {   
-        fprintf(stderr, "[-] Error: Optional Header analysis Failed\n");
+        fprintf(stderr, "[-] Error: Optional Header analysis Failed!\n");
 
         FreeAnalysis(OptionalHeaderResults.Analysis);
         return STATUS_ERROR;
     }
-
+    
     // Map DataDirectory entries *(Export/Import)*
     handler->PEContext->Headers->ExportDirectory = OptionalHeaderResults.ExportDirectory;
 
@@ -52,9 +52,6 @@ int MainPEHeadersParser(HANDLER* handler)
     
     // Detach double pointer to memory
     OptionalHeaderResults.Analysis = NULL;
-
-    fprintf(stdout, "[+] Sections Parsing completed Successfully\n");
-
 
     return STATUS_SUCCESS;
 }
