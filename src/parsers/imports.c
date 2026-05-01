@@ -5,66 +5,38 @@
 
 //============================================================Imports-Parsers============================================================
 
-static uint32_t GetImportDescriptorsCount(MY_IMAGE_IMPORT_DESCRIPTOR* desc, uint8_t* base, size_t size)
+static uint32_t GetImportDescriptorsCount(
+    MY_IMAGE_IMPORT_DESCRIPTOR* desc,
+    uint8_t* base,
+    size_t size)
 {
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < MAX_IMPORT_DESCRIPTORS; i++)
     {
-        if (!desc)
-            break;
+        MY_IMAGE_IMPORT_DESCRIPTOR* cur = &desc[i];
 
         // validate descriptor memory range
-        if ((uint8_t*)desc < base ||
-            (uint8_t*)desc + sizeof(MY_IMAGE_IMPORT_DESCRIPTOR) > base + size)
+        if ((uint8_t*)cur < base ||
+            (uint8_t*)cur + sizeof(MY_IMAGE_IMPORT_DESCRIPTOR) > base + size)
         {
             break;
         }
 
-        if (desc->Name == 0 &&
-            desc->FirstThunk == 0 &&
-            desc->OriginalFirstThunk == 0)
+        // null terminator descriptor
+        if (cur->Name == 0 &&
+            cur->FirstThunk == 0 &&
+            cur->OriginalFirstThunk == 0)
         {
             break;
         }
 
         count++;
-        desc++;
     }
 
     return count;
 }
 
-void* RVA_TO_RAW(HANDLER* handler, uint32_t rva)
-{
-    uint8_t* base = handler->DiskPEImage->DiskImageBase;
-
-    MY_IMAGE_DOS_HEADER* dos = (MY_IMAGE_DOS_HEADER*)base;
-    MY_IMAGE_NT_HEADERS64* nt =
-        (MY_IMAGE_NT_HEADERS64*)(base + dos->e_lfanew);
-
-    MY_IMAGE_SECTION_HEADER* sec =
-        (MY_IMAGE_SECTION_HEADER*)
-        ((uint8_t*)&nt->OptionalHeader +
-         nt->FileHeader.SizeOfOptionalHeader);
-
-    uint16_t n = nt->FileHeader.NumberOfSections;
-
-    for (uint16_t i = 0; i < n; i++)
-    {
-        uint32_t va   = sec[i].VirtualAddress;
-        uint32_t size = sec[i].Misc.VirtualSize;
-        uint32_t raw  = sec[i].PointerToRawData;
-
-        if (rva >= va && rva < va + size)
-        {
-            uint32_t offset = raw + (rva - va);
-            return base + offset;
-        }
-    }
-
-    return NULL;
-}
 
 // Import Descriptors Parser *(INT/IAT per DLL)* 
 TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPORT_DESCRIPTOR* pTempImportDescriptors)
@@ -78,21 +50,11 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         return ERROR_RESULT;
     }
 
-    // Calculate Number of Import Descriptors
-    MY_IMAGE_IMPORT_DESCRIPTOR* pImportdescriptors = pTempImportDescriptors;
-    if (!pImportdescriptors)
-    {
-        fprintf(stderr, "[-] ImportDescriptorsParser: pTempImportDescriptors is NULL\n");
-
-        free(pTempAnalysisImportResult);
-        return ERROR_RESULT;
-    }
-
     uint32_t TempImportDescsCount = GetImportDescriptorsCount(
-                                        pImportdescriptors,
-                                        handler->DiskPEImage->DiskImageBase,
-                                        handler->DiskPEImage->DiskImageSize
-                                    );
+                                    pTempImportDescriptors,
+                                    handler->DiskPEImage->DiskImageBase,
+                                    handler->DiskPEImage->DiskImageSize
+                                );
 
     if (!TempImportDescsCount)
     {
@@ -117,9 +79,15 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     
     for (uint32_t i = 0; i < TempImportDescsCount; i++)
     {   
-        uint8_t* addr = RVA_TO_RAW(handler, pImportdescriptors->Name);
+        uint32_t offsetset = RvaToOffset(
+            pTempImportDescriptors[i].Name,
+            handler->PEContext->Headers->SectionHeaders,
+            handler->PEContext->Headers->FileHeader->NumberOfSections
+        );
+        
+        uint8_t* addr = base + offsetset;
 
-        if (!addr || addr < base || addr >= base + handler->DiskPEImage->DiskImageSize)
+        if (!addr || addr < base || addr >= (base + handler->DiskPEImage->DiskImageSize))
         {
             fprintf(stderr, "[-] Invalid Name RVA\n");
 
@@ -128,7 +96,9 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
             return ERROR_RESULT;
         }
 
-        char* dllName = (char*)RVA_TO_RAW(handler, pImportdescriptors->Name);
+        char* dllName = (char*)addr;
+
+        fprintf(stderr, "[DEBUG] dll index: (%d), dll name: %s\n", i, dllName);
 
         if (!dllName || dllName[0] == '\0')
         {
@@ -139,62 +109,60 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
             return ERROR_RESULT;
         }
 
-        // Map INT & IAT 
-        uint32_t INT_RVA = pImportdescriptors->OriginalFirstThunk;
-        uint32_t IAT_RVA = pImportdescriptors->FirstThunk;
+        uint32_t INT_RVA = pTempImportDescriptors[i].OriginalFirstThunk;
+        uint32_t IAT_RVA = pTempImportDescriptors[i].FirstThunk;
 
-        if (pImportdescriptors->FirstThunk == 0)
+        if (IAT_RVA == 0)
         {
-            fprintf(stderr, "[-] Error: Invalid IAT RVA..\n");
-
-            free(pTempAnalysisImportResult->ParsedImportDescriptors);
-            free(pTempAnalysisImportResult);
+            fprintf(stderr, "[-] Invalid IAT RVA\n");
             return ERROR_RESULT;
         }
 
-        TempIAT = (MY_IMAGE_THUNK_DATA64*)RVA_TO_RAW(handler, IAT_RVA);
+        uint32_t iat_offset = RvaToOffset(
+            IAT_RVA,
+            handler->PEContext->Headers->SectionHeaders,
+            handler->PEContext->Headers->FileHeader->NumberOfSections
+        );
 
-        if (INT_RVA)
+        if (iat_offset >= handler->DiskPEImage->DiskImageSize)
         {
-            TempINT = (MY_IMAGE_THUNK_DATA64*)RVA_TO_RAW(handler, INT_RVA);
-        }    
-        else {
-            fprintf(stderr, "[*] Warning: Missing INT, using IAT as fallback..\n");
+            fprintf(stderr, "[-] Invalid IAT offsetset\n");
+            return ERROR_RESULT;
+        }
 
+        TempIAT = (MY_IMAGE_THUNK_DATA64*)(base + iat_offset);
+
+        if (INT_RVA == 0)
+        {
+            // fallback
             TempINT = TempIAT;
         }
-
-        // Initialize Results
-        PE_PARSED_IMPORT_DESCRIPTOR pTempParsedImportDescriptor = {
-            .DllName = dllName,
-            .INT = TempINT,
-            .IAT = TempIAT,
-            .Functions = NULL,
-            .FunctionsCount = 0
-        };
-
-        // Parse INT & IAT for A DLL
-        STATUS status = ThunkTablesParser(handler, &pTempParsedImportDescriptor);
-
-        if (status == STATUS_ERROR)
+        else
         {
-            fprintf(stderr, "[-] Error: Failed to Parse (IAT/INT) for DLL: %s\n", dllName);
-
-            if(pTempParsedImportDescriptor.Functions)
+            uint32_t int_offset = RvaToOffset(
+                INT_RVA,
+                handler->PEContext->Headers->SectionHeaders,
+                handler->PEContext->Headers->FileHeader->NumberOfSections
+            );
+        
+            if (int_offset >= handler->DiskPEImage->DiskImageSize)
             {
-                free(pTempParsedImportDescriptor.Functions);
+                fprintf(stderr, "[-] Invalid INT offsetset\n");
+                return ERROR_RESULT;
             }
-
-            free(pTempAnalysisImportResult->ParsedImportDescriptors);
-            free(pTempAnalysisImportResult);
-
-            return ERROR_RESULT;
+        
+            TempINT = (MY_IMAGE_THUNK_DATA64*)(base + int_offset);
         }
 
-        pTempAnalysisImportResult->ParsedImportDescriptors[i] = pTempParsedImportDescriptor;
-        
-        // Move to the next Import Descriptor in memory..
-        pImportdescriptors++;
+        PE_PARSED_IMPORT_DESCRIPTOR* pDesc = &pTempAnalysisImportResult->ParsedImportDescriptors[i];
+
+        pDesc->DllName = dllName;
+        pDesc->INT = TempINT;
+        pDesc->IAT = TempIAT;
+        pDesc->Functions = NULL;
+        pDesc->FunctionsCount = 0;
+
+        STATUS status = ThunkTablesParser(handler, pDesc);
     }
     
     fprintf(stdout, "[+] Import Descriptors parsing completed Successfully\n");
@@ -270,43 +238,119 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     {
         uint64_t value = INTthunks[i].u1.AddressOfData;
 
-        // MSB set → ordinal import (not import-by-name struct)
+        fprintf(stderr,
+            "\n[DEBUG] ==== THUNK %u ====\n"
+            "[DEBUG] INT thunk ptr      : %p\n"
+            "[DEBUG] raw thunk value    : 0x%016llX\n",
+            i,
+            &INTthunks[i],
+            (unsigned long long)value
+        );
+
+        // ordinal import
         if (value & ordinalFlag)
         {
             uint16_t ordinal = (uint16_t)(value & 0xFFFF);
 
-            pTempFunctions[i].IsOrdinal = 0x01;
+            fprintf(stderr,
+                "[DEBUG] ordinal import detected\n"
+                "[DEBUG] ordinal = %hu\n",
+                ordinal
+            );
+
+            pTempFunctions[i].IsOrdinal = 1;
             pTempFunctions[i].Ordinal = ordinal;
             pTempFunctions[i].FunctionName = NULL;
 
-            fprintf(stdout, "[+] Importing DLL Function Using an ordinal: %hu\n", ordinal);
+            fprintf(stdout,
+                "[+] Importing DLL Function Using ordinal: %hu\n",
+                ordinal
+            );
         }
         else
         {
-            INTentry = (MY_IMAGE_IMPORT_BY_NAME*)RVA_TO_RAW(handler, value);
+            uint32_t nameRva = (uint32_t)value;
+
+            fprintf(stderr,
+                "[DEBUG] import-by-name\n"
+                "[DEBUG] Name RVA = 0x%08X\n",
+                nameRva
+            );
+
+            uint32_t offset = RvaToOffset(
+                nameRva,
+                handler->PEContext->Headers->SectionHeaders,
+                handler->PEContext->Headers->FileHeader->NumberOfSections
+            );
+
+            fprintf(stderr,
+                "[DEBUG] file offsetset = 0x%08X\n",
+                offset
+            );
+
+            if (offset == 0 || offset >= handler->DiskPEImage->DiskImageSize)
+            {
+                fprintf(stderr,
+                    "[-] Invalid INT RVA\n"
+                    "[-] RVA  = 0x%08X\n"
+                    "[-] offset  = 0x%08X\n"
+                    "[-] SIZE = 0x%llX\n",
+                    nameRva,
+                    offset,
+                    (unsigned long long)handler->DiskPEImage->DiskImageSize
+                );
+                return STATUS_ERROR;
+            }
+
+            INTentry = (MY_IMAGE_IMPORT_BY_NAME*)
+                (handler->DiskPEImage->DiskImageBase + offset);
+
+            fprintf(stderr,
+                "[DEBUG] INTentry ptr = %p\n"
+                "[DEBUG] hint         = 0x%04X\n"
+                "[DEBUG] name ptr     = %p\n"
+                "[DEBUG] name         = %s\n",
+                INTentry,
+                INTentry->hint,
+                INTentry->Name,
+                INTentry->Name
+            );
 
             if (!INTentry || !INTentry->Name)
             {
                 fprintf(stderr,
                     "[-] Invalid INT entry at index %u\n",
-                    i);
+                    i
+                );
                 return STATUS_ERROR;
             }
 
-            pTempFunctions[i].IsOrdinal = 0x00;
+            pTempFunctions[i].IsOrdinal = 0;
             pTempFunctions[i].Ordinal = 0;
             pTempFunctions[i].FunctionName = INTentry->Name;
 
-            fprintf(stdout, "[+] Importing DLL Function Using a Name: %s\n", pTempFunctions[i].FunctionName);
-        } 
+            fprintf(stdout,
+                "[+] Importing DLL Function Using a Name: %s\n",
+                pTempFunctions[i].FunctionName
+            );
+        }
 
         uint64_t IATFunction = IATthunks[i].u1.Function;
         pTempFunctions[i].IATAddress = IATFunction;
 
-        // Map IAT Addresses
+        fprintf(stderr,
+            "[DEBUG] IAT thunk ptr      : %p\n"
+            "[DEBUG] IAT function value : 0x%016llX\n",
+            &IATthunks[i],
+            (unsigned long long)IATFunction
+        );
+
         if (!IATFunction)
         {
-            fprintf(stderr, "[*] Warning: Unresolved IAT entry at index: %u\n", i);
+            fprintf(stderr,
+                "[*] Warning: Unresolved IAT entry at index: %u\n",
+                i
+            );
         }
     }
 

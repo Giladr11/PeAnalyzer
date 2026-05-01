@@ -27,10 +27,11 @@ int SectionHeadersParser(HANDLER* handler)
     MY_IMAGE_DOS_HEADER* dos = (MY_IMAGE_DOS_HEADER*)base;
     MY_IMAGE_NT_HEADERS64* nt = (MY_IMAGE_NT_HEADERS64*)(base + dos->e_lfanew);
 
-    MY_IMAGE_SECTION_HEADER* pTempSectionHeader = 
-        (MY_IMAGE_SECTION_HEADER*)
-        ((uint8_t*)&nt->OptionalHeader + 
-         nt->FileHeader.SizeOfOptionalHeader);
+    MY_IMAGE_SECTION_HEADER* pTempSectionHeader =
+        (MY_IMAGE_SECTION_HEADER*)((uint8_t*)nt +
+        4 + // signature
+        sizeof(MY_IMAGE_FILE_HEADER) +
+        nt->FileHeader.SizeOfOptionalHeader);
     
     uint8_t* sectionEnd = (uint8_t*)pTempSectionHeader + (NumberOfSections * sizeof(MY_IMAGE_SECTION_HEADER));
 
@@ -80,6 +81,7 @@ int SectionHeadersParser(HANDLER* handler)
         }
 
         handler->PEContext->Headers->SectionHeaders[i] = pTempSectionHeader[i];
+        
         printf("[DEBUG] Section NAME: %s\n", pTempSectionHeader[i].Name);
     }
 

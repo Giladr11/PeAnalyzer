@@ -58,7 +58,7 @@ int NTHeadersParser(HANDLER* handler)
         return STATUS_ERROR; 
     }
     
-    // Parse File Header
+    // File Header Parsing
     if (FileHeaderParser(&pTempNTHeaders->FileHeader) == STATUS_ERROR)
     {
         fprintf(stderr, "[-] Error: File Header analysis Failed\n");
@@ -66,37 +66,14 @@ int NTHeadersParser(HANDLER* handler)
         return STATUS_ERROR;
     }
 
-    // Parse Optional Header
-    TABLES_ANALYSIS_RESULTS OptionalHeaderResults = OptionalHeaderParser(handler, &pTempNTHeaders->OptionalHeader);
-
-    if (OptionalHeaderResults.status == STATUS_ERROR)
-    {   
-        fprintf(stderr, "[-] Error: Optional Header analysis Failed\n");
-
-        FreeAnalysis(OptionalHeaderResults.Analysis);
-        return STATUS_ERROR;
-    }
-
-
-    // Map NT-Headers
-    handler->PEContext->Headers->NtHeaders = pTempNTHeaders;
+    // Map File Header
     handler->PEContext->Headers->FileHeader = &pTempNTHeaders->FileHeader;
+
+    // Map NT Headers
+    handler->PEContext->Headers->NtHeaders = pTempNTHeaders;
+
+    // Optional Header Parsing call is done outside NT Header parser
     handler->PEContext->Headers->OptionalHeader = &pTempNTHeaders->OptionalHeader;
-
-    // Map DataDirectory entries *(Export/Import)*
-    handler->PEContext->Headers->ExportDirectory = OptionalHeaderResults.ExportDirectory;
-
-    // Map Import Descriptor if successfully resolved
-    if (OptionalHeaderResults.ImportDescriptors)
-    {
-        handler->PEContext->Headers->ImportDescriptors = OptionalHeaderResults.ImportDescriptors;   
-    }
-
-    // transfer Pointer OwnerShip 
-    handler->PEContext->Analysis = OptionalHeaderResults.Analysis;
-    
-    // Detach double pointer to memory
-    OptionalHeaderResults.Analysis = NULL;
 
     return STATUS_SUCCESS;
 }
@@ -154,7 +131,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
             return ERROR_RESULT;
         }
-    }
+    }   
 
     // Parse DataDirectory
     if (pTempOptionalHeader->NumberOfRvaAndSizes < MY_IMAGE_NUMBEROF_DIRECTORY_ENTRIES)
@@ -166,7 +143,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     // Store (Import & Export) RVA to Access the Tabels in the PE Image
     uint32_t ExportDirectoryRVA = pTempOptionalHeader->DataDirectory[MY_IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
     uint32_t ImportDescriptorsRVA = pTempOptionalHeader->DataDirectory[MY_IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-
+    
     // Initialize temps..
     MY_IMAGE_EXPORT_DIRECTORY* pTempExportDirectory = NULL;
     MY_IMAGE_IMPORT_DESCRIPTOR* pTempImportDescriptors = NULL;
@@ -178,9 +155,29 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     // Store (Import & Export) Table temps
     if (ExportDirectoryRVA) 
     {
-        fprintf(stdout, "[DEBUG] Export Directory RVA: 0x%X\n", ImportDescriptorsRVA);
+        fprintf(stdout, "[DEBUG] base image is at: %p\n", pTempOptionalHeader->ImageBase);
+        fprintf(stdout, "[DEBUG] Export Directories RVA: 0x%X\n", ExportDirectoryRVA);
+
+        uint32_t offset = RvaToOffset(
+            ExportDirectoryRVA,
+            handler->PEContext->Headers->SectionHeaders,
+            handler->PEContext->Headers->FileHeader->NumberOfSections
+        );
+
+        if (offset == UINT32_MAX)
+        {
+            fprintf(stderr, "[-] Invalid RVA\n");
+            return ERROR_RESULT;
+        }
+
+        pTempExportDirectory = (MY_IMAGE_EXPORT_DIRECTORY*)(handler->DiskPEImage->DiskImageBase + offset);
+
         
-        pTempExportDirectory = (MY_IMAGE_EXPORT_DIRECTORY*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, ExportDirectoryRVA));
+        fprintf(stderr,
+            "[DEBUG] Export Directories (file ptr): %p | RVA: 0x%X\n",
+            pTempExportDirectory,
+            ExportDirectoryRVA);
+            
     }
     else
     {
@@ -189,11 +186,30 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
     if (ImportDescriptorsRVA) 
     {
-
+        fprintf(stdout, "[DEBUG] base image is at: %p\n", pTempOptionalHeader->ImageBase);
         fprintf(stdout, "[DEBUG] Import Descriptors RVA: 0x%X\n", ImportDescriptorsRVA);
 
-        pTempImportDescriptors = (MY_IMAGE_IMPORT_DESCRIPTOR*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, ImportDescriptorsRVA));
-    }
+        uint32_t offset = RvaToOffset(
+            ImportDescriptorsRVA,
+            handler->PEContext->Headers->SectionHeaders,
+            handler->PEContext->Headers->FileHeader->NumberOfSections
+        );
+
+        if (offset == UINT32_MAX)
+        {
+            fprintf(stderr, "[-] Invalid RVA\n");
+            return ERROR_RESULT;
+        }
+
+        pTempImportDescriptors = (MY_IMAGE_IMPORT_DESCRIPTOR*)(handler->DiskPEImage->DiskImageBase + offset);
+
+        
+        fprintf(stderr,
+            "[DEBUG] Import Descriptors (file ptr): %p | RVA: 0x%X\n",
+            pTempImportDescriptors,
+            ImportDescriptorsRVA);
+            }
+    
     else
     {
         fprintf(stdout, "[*] Warning: PE does not contain an Import Table (RVA = 0)\n");

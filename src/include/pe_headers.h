@@ -127,7 +127,7 @@ typedef struct {
 //-------------------------------------------------Import/Export Tables & IAT/INT------------------------------------------------
 
 
-// Import Descriptor *(DataDirectory[1])* -> Represents a Single DLL Imported to the EXE
+// An Entry in Import Descriptor *(DataDirectory[1])* -> Represents a Single DLL Imported to the EXE
 typedef struct {
     union {
         uint32_t Characteristics;

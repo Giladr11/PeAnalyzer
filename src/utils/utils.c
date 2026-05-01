@@ -58,9 +58,9 @@ void FreeAnalysis(ANALYSIS_CONTEXT* a) {
         }
 
         free(a->ParsedImportDescriptors);
+        a->ParsedImportDescriptors = NULL;
     }
     
-    free(a->ParsedImportDescriptors);
     free(a);
 }
 

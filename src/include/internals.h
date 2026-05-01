@@ -81,3 +81,24 @@ static inline uint8_t* RVA_TO_VA(uint8_t* base, uintptr_t rva)
 {
     return base + rva;
 }
+
+static uint32_t RvaToOffset(uint32_t rva, MY_IMAGE_SECTION_HEADER* sections, uint16_t numSections)
+{
+    for (int i = 0; i < numSections; i++)
+    {
+        uint32_t start = sections[i].VirtualAddress;
+
+        uint32_t size = sections[i].Misc.VirtualSize;
+        if (size < sections[i].SizeOfRawData)
+            size = sections[i].SizeOfRawData;
+
+        uint32_t end = start + size;
+
+        if (rva >= start && rva < end)
+        {
+            return (rva - start) + sections[i].PointerToRawData;
+        }
+    }
+
+    return 0;
+}

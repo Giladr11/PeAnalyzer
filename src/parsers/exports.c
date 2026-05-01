@@ -64,10 +64,10 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
 {   
     ANALYSIS_CONTEXT* ERROR_RESULT = NULL;
 
-    // Resolve EAT VA 
+    //Resolve EAT VA 
     uint32_t* TempEAT = (uint32_t*)RVA_TO_VA(handler->DiskPEImage->DiskImageBase,
                                              pTempExportDirectory->AddressOfFunctions);
-    
+
     // Resolve AddressOfNames VA
     uint32_t* TempAddressOfNames = (uint32_t*)RVA_TO_VA(handler->DiskPEImage->DiskImageBase,
                                                         pTempExportDirectory->AddressOfNames);
@@ -79,7 +79,7 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
     // Array Sizes
     uint32_t EATCount = pTempExportDirectory->NumberOfFunctions;
     uint32_t NamesTableCount = pTempExportDirectory->NumberOfNames;
-    uint32_t Base = pTempExportDirectory->Base;
+    uint32_t base_ordinal = pTempExportDirectory->Base;
     
     TABLES_ANALYSIS_RESULTS ParseEatResult = {0};
 
@@ -91,16 +91,23 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
         if (name && name[0] != '\0')
         {
             uint32_t ordinal = TempAddressOfNameOrdinals[i];
-            uint32_t EATindex = ordinal - Base;
+
+            if(ordinal < base_ordinal) {
+                continue;
+            }
+
+            uint32_t EATindex = ordinal - base_ordinal;
 
             if (EATindex >= EATCount)
             {
                fprintf(stderr, "[*] Warning: EAT index out of bounds, skipping...\n");
+               continue;
             }
 
             else if (TempEAT[EATindex] == 0x0)
             {
                 fprintf(stderr, "[*] Warning: Empty EAT entry, skipping...\n");
+                continue;
             }
 
 
@@ -126,7 +133,7 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
         .EATCount              = EATCount,
         .AddressOfNames        = TempAddressOfNames,
         .NumberOfNames         = NamesTableCount,
-        .OrdinalsBase          = Base,
+        .OrdinalsBase          = base_ordinal,
         .AddressOfNameOrdinals = TempAddressOfNameOrdinals
     };
 
