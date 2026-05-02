@@ -163,6 +163,11 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         pDesc->FunctionsCount = 0;
 
         STATUS status = ThunkTablesParser(handler, pDesc);
+
+        if (status == ERROR_STATUS) 
+        {
+            fprintf(stderr, "[-] Error: Failed to parse Thunk Tables for: %s\n", dllName);
+        }
     }
 
     return (TABLES_ANALYSIS_RESULTS){
@@ -177,16 +182,14 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
 {
     if (!pTempParsedImportDescriptor)
     {
-        fprintf(stderr,
-            "[-] Error: pTempParsedImportDescriptor is NULL\n");
+        fprintf(stderr, "[-] Error: pTempParsedImportDescriptor is NULL\n");
         
         return ERROR_STATUS;
     }
 
     if (!pTempParsedImportDescriptor->INT)
     {
-        fprintf(stderr,
-            "[-] Error: INT pointer: %p is NULL (FirstThunk missing)\n",
+        fprintf(stderr, "[-] Error: INT pointer: %p is NULL (FirstThunk missing)\n",
             pTempParsedImportDescriptor->INT);
             
         return ERROR_STATUS;
@@ -194,8 +197,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
 
     if (!pTempParsedImportDescriptor->IAT)
     {
-        fprintf(stderr,
-            "[-] Error: IAT pointer: %p is NULL (FirstThunk missing)\n",
+        fprintf(stderr, "[-] Error: IAT pointer: %p is NULL (FirstThunk missing)\n",
             pTempParsedImportDescriptor->IAT);
 
         return ERROR_STATUS;
@@ -314,12 +316,9 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
             //    INTentry->Name
             //);
 
-            if (!INTentry || !INTentry->Name)
+            if (!INTentry)
             {
-                fprintf(stderr,
-                    "[-] Invalid INT entry at index %u\n",
-                    i
-                );
+                fprintf(stderr, "[-] Invalid INT entry at index %u\n", i);
                 return ERROR_STATUS;
             }
 
@@ -345,10 +344,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
 
         if (!IATFunction)
         {
-            fprintf(stderr,
-                "[*] Warning: Unresolved IAT entry at index: %u\n",
-                i
-            );
+            fprintf(stderr, "[*] Warning: Unresolved IAT entry at index: %u\n", i);
         }
     }
 

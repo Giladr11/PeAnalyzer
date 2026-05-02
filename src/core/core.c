@@ -4,8 +4,11 @@
 //=========================================================Main-Handler=========================================================
 
 // Initialize handler object and read PE image from file
-HANDLER* initPEAnalyzer(char* pe_path) {
-    printf("Initiating PE Analyzer\n");
+HANDLER* initPEAnalyzer(char* pe_path) 
+{   
+    fprintf(stdout, "==============================\n");
+    fprintf(stdout, "[PHASE] Initiating PE Analyzer\n");
+    fprintf(stdout, "==============================\n\n");
     
     size_t pe_size = 0;
 
@@ -20,7 +23,10 @@ HANDLER* initPEAnalyzer(char* pe_path) {
     {
         return NULL;
     }
+
+    return handler;
 }
+
 
 // Read PE from disk to RAM
 void* ReadPEDiskImage(char* pe_path, size_t* pe_size) 
@@ -59,6 +65,7 @@ void* ReadPEDiskImage(char* pe_path, size_t* pe_size)
     return buffer;
 }
 
+
 // Initialize Handler Object
 HANDLER* InitializeHandler(void* pe_base, size_t pe_size) 
 {
@@ -75,4 +82,18 @@ HANDLER* InitializeHandler(void* pe_base, size_t pe_size)
     handler->DiskPEImage->DiskImageSize = pe_size;
     
     return handler;
+}
+
+
+void clean_heap(HANDLER* handler) 
+{
+    FreeAnalysis(handler->PEContext->Analysis);
+    FreeParsedExportDirectoryAnalysis(handler->PEContext->Analysis->ParsedExportDirectory);
+    
+    free(handler->PEContext->Headers->DosStub);
+    free(handler->PEContext->Headers);
+    
+    free(handler->DiskPEImage);
+    free(handler->PEContext);
+    free(handler);
 }

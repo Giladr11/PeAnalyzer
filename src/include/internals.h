@@ -35,7 +35,7 @@ typedef struct {
 int DosHeaderParser(HANDLER* handler);
 
 // Extract DOS Stub Header ("This program cannot be run in DOS mode.")
-int ExtractDosStub(HANDLER* handler);
+int DosStubParser(HANDLER* handler);
 
 int NTHeadersParser(HANDLER* handler);
 int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader);
@@ -66,10 +66,11 @@ int SectionHeadersParser(HANDLER* handler);
 //----------------------------Internal-Context-Dumping----------------------------------
 
 // Context Dumping
-int DumpDosHeader(MY_IMAGE_DOS_HEADER* dosHeader);
-int DumpNTHeaders(MY_IMAGE_NT_HEADERS64* ntHeaders);
-int DumpFileHeader(MY_IMAGE_FILE_HEADER* fileHeader);
-int DumpOptionalHeader(MY_IMAGE_OPTIONAL_HEADER64* optionalHeader);
+int DumpDosHeader(PE_CONTEXT* PEContext);
+int DumpDosStub(PE_CONTEXT* PEContext);
+int DumpNTHeaders(PE_CONTEXT* PEContext);
+int DumpFileHeader(PE_CONTEXT* PEContext);
+int DumpOptionalHeader(PE_CONTEXT* PEContext);
 
 // Analysis Dumping
 int DumpEAT();
@@ -79,32 +80,15 @@ int DumpIAT();
 
 //--------------------------------Internal-Helpers--------------------------------------
 
-// Ensures header does not exceed disk image boundaries
+// Ensure header does not exceed disk image boundaries
 int IsValidRange(size_t DiskImageSize, uint32_t offset, uint32_t size);
 
+// Resolve RVA to VA
 // "inline" makes this function be a code text replacement instead of function call 
 static inline uint8_t* RVA_TO_VA(uint8_t* base, uintptr_t rva) 
 {
     return base + rva;
 }
 
-static uint32_t RvaToOffset(uint32_t rva, MY_IMAGE_SECTION_HEADER* sections, uint16_t numSections)
-{
-    for (int i = 0; i < numSections; i++)
-    {
-        uint32_t start = sections[i].VirtualAddress;
-
-        uint32_t size = sections[i].Misc.VirtualSize;
-        if (size < sections[i].SizeOfRawData)
-            size = sections[i].SizeOfRawData;
-
-        uint32_t end = start + size;
-
-        if (rva >= start && rva < end)
-        {
-            return (rva - start) + sections[i].PointerToRawData;
-        }
-    }
-
-    return 0;
-}
+// Resolve Sections Offsets for Imports using an RVA
+uint32_t RvaToOffset(uint32_t rva, MY_IMAGE_SECTION_HEADER* sections, uint16_t numSections);

@@ -49,8 +49,6 @@ TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_
     // Free temporary container (no longer owns any heap data)
     free(pTempAnalysisExportResult);
 
-    fprintf(stdout, "[+] Export Directories Parsing completed Successfully\n");
-
     return (TABLES_ANALYSIS_RESULTS){
         .ExportDirectory   = pTempExportDirectory,
         .ImportDescriptors = NULL,
@@ -58,6 +56,7 @@ TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_
         .status            = SUCCESS_STATUS
     };
 }
+
 
 // EAT Parser & Validator & Store in ParsedExportDirectoryResults.Analysis (Name -> Ordinal -> Ordinal_Conversation (EAT_index) -> EAT[EAT_index])
 ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempExportDirectory) 
@@ -80,8 +79,6 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
     uint32_t EATCount = pTempExportDirectory->NumberOfFunctions;
     uint32_t NamesTableCount = pTempExportDirectory->NumberOfNames;
     uint32_t base_ordinal = pTempExportDirectory->Base;
-    
-    TABLES_ANALYSIS_RESULTS ParseEatResult = {0};
 
     // Store results in ParsedExportDirectoryResults.Analysis->ParsedExportDirectory->EAT ParsedExportDirectoryResults.Analysis->ParsedExportDirectory->EATCount 
     for (uint32_t i = 0; i < NamesTableCount; i++)
@@ -110,12 +107,11 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
                 continue;
             }
 
-
             //-----------Thats How you would call The function "DWORD GetTickCount()" from 'kernel32.dll' using Export Table----------//
             //                                                                                                                        //
             // if (strcmp(name, "GetTickCount") == 0)                                                                                 //
             // {                                                                                                                      //
-            //     DWORD (*GetTickCount)(void)= (DWORD(*)(void))((uint8_t*)handler->DiskPEImage->DiskImageBase + TempEAT[EATindex]);  //
+            //     DWORD (*GetTickCount)(void) = (DWORD(*)(void))((uint8_t*)handler->DiskPEImage->DiskImageBase + TempEAT[EATindex]); //
             //       ^           ^         ^                                                                                          //
             //       |           |         |                                                                                          //
             //  (Return Type) (Name) (no Arguments)                                                                                   //

@@ -38,7 +38,7 @@ int DosHeaderParser(HANDLER* handler)
 
 
 // Extract DOS-Stub Header 
-int ExtractDosStub(HANDLER* handler) 
+int DosStubParser(HANDLER* handler) 
 {
     uint8_t* stub_start = (uint8_t*)handler->DiskPEImage->DiskImageBase + sizeof(MY_IMAGE_DOS_HEADER);
     uint8_t* stub_end = RVA_TO_VA(handler->DiskPEImage->DiskImageBase, handler->PEContext->Headers->DosHeader->e_lfanew);
@@ -46,7 +46,7 @@ int ExtractDosStub(HANDLER* handler)
     const char* target = "This program cannot be run in DOS mode.";
     size_t target_size = strlen(target);
 
-    int8_t* found = NULL;
+    uint8_t* found = NULL;
 
     for (uint8_t* p = stub_start; p < stub_end - target_size; p++)
     {
@@ -57,14 +57,20 @@ int ExtractDosStub(HANDLER* handler)
         }
     }
     
-    if (memcmp(found, target, target_size) == 0)
+    if (found && memcmp(found, target, target_size) == 0)
     {
-        printf("\n[+] Successfully Extracted Dos-Stub! :) \n\n");
-        printf("DOS STUB Message: %s\n\n", found);
+        fprintf(stdout, "[+] Dos Stub parsing has completed Successfully! :) \n\n");
+
+        // Map into Context Object
+        handler->PEContext->Headers->DosStub = malloc(target_size);
+
+        memcpy(handler->PEContext->Headers->DosStub, found, target_size);
+
+        handler->PEContext->Headers->DosStub[target_size] = '\0';
     }
-    
-    else {
-        printf("\n[-] Error: Failed to Extract DOS-Stub :( \n\n");
+    else
+    {
+        fprintf(stderr, "\n[-] Error: Failed to Extract Dos-Stub :( \n\n");
         return ERROR_STATUS;
     }
 
@@ -75,6 +81,7 @@ int ExtractDosStub(HANDLER* handler)
 // NT-Headers Parser
 int NTHeadersParser(HANDLER* handler)
 {
+    // Extract NT Headers Offset from Dos Header
     uint32_t nt_offset = handler->PEContext->Headers->DosHeader->e_lfanew;
 
     // Verify the NT Headers offset and size fit within the actual file buffer to prevent out-of-bounds memory access
@@ -84,6 +91,7 @@ int NTHeadersParser(HANDLER* handler)
         return ERROR_STATUS;
     }
 
+    // Resolve NT Headers VA
     MY_IMAGE_NT_HEADERS64* pTempNTHeaders = (MY_IMAGE_NT_HEADERS64*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, nt_offset));
 
     // Validate the 'PE\0\0' (0x50450000) signature to confirm this is a valid PE file
@@ -107,7 +115,7 @@ int NTHeadersParser(HANDLER* handler)
     // Map NT Headers
     handler->PEContext->Headers->NtHeaders = pTempNTHeaders;
 
-    // Optional Header Parsing call is done outside NT Header parser
+    // Optional Header Parsing is done in OptionalHeaderInitializer()
     handler->PEContext->Headers->OptionalHeader = &pTempNTHeaders->OptionalHeader;
 
     return SUCCESS_STATUS;
@@ -133,7 +141,7 @@ int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
         return ERROR_STATUS;
     }
     
-    fprintf(stdout, "[+] File Header Parsing completed Successfully!\n");
+    fprintf(stdout, "[+] File Header Parsing has completed Successfully!\n");
 
     return SUCCESS_STATUS;
 }
@@ -170,6 +178,8 @@ int OptionalHeaderInitializer(HANDLER* handler)
     
     // Detach double pointer to memory
     OptionalHeaderResults.Analysis = NULL;
+
+    return SUCCESS_STATUS;
 }
 
 
@@ -249,7 +259,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     }
     else
     {
-        fprintf(stderr, "[*] Warning: No Export Directory found (Export RVA = %u)\n", ExportDirectoryRVA);
+        fprintf(stderr, "[*] Warning: No Export Directories found (Export RVA = %u)\n", ExportDirectoryRVA);
     }
 
     if (ImportDescriptorsRVA) 
@@ -279,7 +289,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     
     else
     {
-        fprintf(stdout, "[*] Warning: No Import Descriptors found (Import RVA = %u)\n", ImportDescriptorsRVA);
+        fprintf(stderr, "[*] Warning: No Import Descriptors found (Import RVA = %u)\n", ImportDescriptorsRVA);
     }
     
     // Execute (Export Directory) Parser 
@@ -289,7 +299,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
         if (TempExportResults.status == SUCCESS_STATUS)
         {
-            fprintf(stdout, "[+] Export Directories parsing completed Successfully!\n");
+            fprintf(stdout, "[+] Export Directories parsing has completed Successfully!\n");
 
             OptionalHeaderResults.ExportDirectory = pTempExportDirectory;
         }
@@ -311,7 +321,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
 
         if (TempImportResults.status == SUCCESS_STATUS)
         {
-            fprintf(stdout, "[+] Import Descriptors parsing completed Successfully!\n");
+            fprintf(stdout, "[+] Import Descriptors parsing has completed Successfully!\n");
 
             OptionalHeaderResults.ImportDescriptors = pTempImportDescriptors;
         }

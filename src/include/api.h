@@ -16,6 +16,7 @@ typedef struct {
 typedef struct {
     // DOS
     MY_IMAGE_DOS_HEADER* DosHeader;
+    char* DosStub;
 
     // NT
     MY_IMAGE_NT_HEADERS64* NtHeaders;
@@ -94,6 +95,7 @@ typedef struct {
 //------------------------------------Public-APIs-------------------------------------
 // Core
 HANDLER* initPEAnalyzer(char* pe_path);
+void clean_heap(HANDLER* handler);
 
 // Main Parser
 int MainPEHeadersParser(HANDLER* handler);                     // Headers Parsing *(Executing the Parsers)*

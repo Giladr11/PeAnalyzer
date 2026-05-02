@@ -10,6 +10,27 @@ int IsValidRange(size_t DiskImageSize, uint32_t offset, uint32_t size)
     return offset + size <= DiskImageSize;
 }
 
+uint32_t RvaToOffset(uint32_t rva, MY_IMAGE_SECTION_HEADER* sections, uint16_t numSections)
+{
+    for (int i = 0; i < numSections; i++)
+    {
+        uint32_t start = sections[i].VirtualAddress;
+
+        uint32_t size = sections[i].Misc.VirtualSize;
+        if (size < sections[i].SizeOfRawData)
+            size = sections[i].SizeOfRawData;
+
+        uint32_t end = start + size;
+
+        if (rva >= start && rva < end)
+        {
+            return (rva - start) + sections[i].PointerToRawData;
+        }
+    }
+
+    return 0;
+}
+
 // free Helpers
 void FreeAnalysis(ANALYSIS_CONTEXT* a) {
     if (!a) return;

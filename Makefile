@@ -1,5 +1,5 @@
 # Commands
-GCC_CMD = gcc 
+GCC_CMD = gcc -Wall -g -O0 -Isrc
 
 # GENERAL DIRS
 BUILD_DIR = build
@@ -73,10 +73,10 @@ OBJECTS_C = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES_C))
 all: $(UTILS_OBJ) $(PE_ANLYZER_EXE)
 
 $(PE_ANLYZER_EXE): $(UTILS_OBJ) $(OBJECTS_C)  
-	$(GCC_CMD) -g -O0 -Isrc $(OBJECTS_C) -o $(PE_ANLYZER_EXE)
+	$(GCC_CMD) $(OBJECTS_C) -o $(PE_ANLYZER_EXE)
  	
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c
-	$(GCC_CMD) -g -O0 -Isrc -c $< -o $@
+	$(GCC_CMD) -c $< -o $@
 
 clean:
 	@echo "Cleaning '$(BUILD_DIR)' Directory..."
