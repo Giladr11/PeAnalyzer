@@ -1,15 +1,35 @@
 #include "include/internals.h"
 
 
-//============================================================Main-Handler============================================================
+//=========================================================Main-Handler=========================================================
 
-void* LoadPEDiskImage(char* PEpath, size_t* PE_size) 
+// Initialize handler object and read PE image from file
+HANDLER* initPEAnalyzer(char* pe_path) {
+    printf("Initiating PE Analyzer\n");
+    
+    size_t pe_size = 0;
+
+    void* filebase = ReadPEDiskImage(pe_path, &pe_size);
+    if (!filebase)
+    {
+        return NULL;
+    }
+    
+    HANDLER* handler = InitializeHandler(filebase, pe_size);
+    if (!handler)
+    {
+        return NULL;
+    }
+}
+
+// Read PE from disk to RAM
+void* ReadPEDiskImage(char* pe_path, size_t* pe_size) 
 {
-    FILE* DiskPEImage = fopen(PEpath, "rb");
+    FILE* DiskPEImage = fopen(pe_path, "rb");
 
     if (!DiskPEImage)
     {
-        fprintf(stderr, "[-] Failed to open file: %s\n", PEpath);
+        fprintf(stderr, "[-] Failed to open file: %s\n", pe_path);
         return NULL;
     }
     
@@ -33,13 +53,14 @@ void* LoadPEDiskImage(char* PEpath, size_t* PE_size)
 
     fclose(DiskPEImage);
 
-    if (PE_size)
-        *PE_size = size;
+    if (pe_size)
+        *pe_size = size;
 
     return buffer;
 }
 
-HANDLER* CreateHandler(void* PEbase, size_t PEsize) 
+// Initialize Handler Object
+HANDLER* InitializeHandler(void* pe_base, size_t pe_size) 
 {
     HANDLER* handler = calloc(1, sizeof(HANDLER));
     if (!handler) 
@@ -50,8 +71,8 @@ HANDLER* CreateHandler(void* PEbase, size_t PEsize)
     handler->DiskPEImage = calloc(1, sizeof(PE_DISK_IMAGE));
     handler->PEContext = calloc(1, sizeof(PE_CONTEXT));
 
-    handler->DiskPEImage->DiskImageBase = PEbase;
-    handler->DiskPEImage->DiskImageSize = PEsize;
+    handler->DiskPEImage->DiskImageBase = pe_base;
+    handler->DiskPEImage->DiskImageSize = pe_size;
     
     return handler;
 }

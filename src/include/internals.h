@@ -11,7 +11,12 @@
 #include "pe_headers.h"
 
 
-//--------------------------------Internal-Structs--------------------------------------
+//------------------------------------Init-PE-Analyzer--------------------------------------
+
+void* ReadPEDiskImage(char* pe_path, size_t* pe_size);
+HANDLER* InitializeHandler(void* pe_base, size_t pe_size);
+
+//------------------------------------Internal-Structs--------------------------------------
 
 typedef struct {
     MY_IMAGE_EXPORT_DIRECTORY* ExportDirectory;        // Pointer to raw Export Directory (DataDirectory[0])
@@ -24,13 +29,17 @@ typedef struct {
 } TABLES_ANALYSIS_RESULTS;
 
 
-//----------------------------Internal-Parsing-Routines---------------------------------
+//--------------------------------Internal-Parsing-Routines---------------------------------
 
 // Parse Functions *(Validate & Map (PE headers & RVAs) from 'RawImage' into a 'PEObj')*
 int DosHeaderParser(HANDLER* handler);
 
+// Extract DOS Stub Header ("This program cannot be run in DOS mode.")
+int ExtractDosStub(HANDLER* handler);
+
 int NTHeadersParser(HANDLER* handler);
 int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader);
+int OptionalHeaderInitializer(HANDLER* handler);
 TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL_HEADER64* pTempOptionalHeader);
 
 
@@ -69,9 +78,6 @@ int DumpIAT();
 
 
 //--------------------------------Internal-Helpers--------------------------------------
-
-// Extract DOS Stub Header ("This program cannot be run in DOS mode.")
-int ExtractDosStub(HANDLER* handler);
 
 // Ensures header does not exceed disk image boundaries
 int IsValidRange(size_t DiskImageSize, uint32_t offset, uint32_t size);

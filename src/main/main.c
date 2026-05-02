@@ -2,44 +2,47 @@
 #include <stdlib.h> 
 #include <stdio.h>
 
+//========================================================Main-PE-Analyzer========================================================
 
 int main(int argc, char* argv[]) 
 {
+    // Input Validation
     if (argc < 2)
     {
         fprintf(stderr, "Usage: %s <file.exe>\n", argv[0]);
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
     
-    size_t PE_size = 0;
-
-    void* filebase = LoadPEDiskImage(argv[1], &PE_size);
-    if (!filebase)
-    {
-        return STATUS_ERROR;
-    }
-    
-    HANDLER* handler = CreateHandler(filebase, PE_size);
+    // PE Analyzer Initialization Phase
+    HANDLER* handler = initPEAnalyzer(argv[1]);
     if (!handler)
     {
-        return STATUS_ERROR;
+        printf("[-] Error: Failed to Initialize PE-Analyzer!\n");
+        return ERROR_STATUS;
     }
 
-    printf("Initiating PE Headers Parsing...\n");
+    // Parsing Phase
+    printf("Initiating Parsing Phase...\n\n");
 
     int status = MainPEHeadersParser(handler);
 
-    if (status == STATUS_SUCCESS)
+    if (status == SUCCESS_STATUS)
     {
         fprintf(stdout, "[+] Headers Parsing Finished Succesfully!\n");
     }
     else 
     {
         fprintf(stderr, "[-] Error: Parsing failed!\n");
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
     
-    // Cleaning heap pointers
+    // Context Dumping Phase
+    printf("\nInitiating Context Dumping Phase...\n\n");
+
+
+
+
+    // Cleaning Phase
     FreeAnalysis(handler->PEContext->Analysis);
     FreeParsedExportDirectoryAnalysis(handler->PEContext->Analysis->ParsedExportDirectory);
     free(handler->PEContext->Headers);

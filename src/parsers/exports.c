@@ -6,7 +6,7 @@
 // Export Table Parser *(EAT)* 
 TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempExportDirectory)
 {   
-    TABLES_ANALYSIS_RESULTS ERROR_RESULT = {.status=STATUS_ERROR};
+    TABLES_ANALYSIS_RESULTS ERROR_RESULT = {.status=ERROR_STATUS};
 
     if (!pTempExportDirectory)
         return ERROR_RESULT;
@@ -55,7 +55,7 @@ TABLES_ANALYSIS_RESULTS ExportDirectoryParser(HANDLER* handler, MY_IMAGE_EXPORT_
         .ExportDirectory   = pTempExportDirectory,
         .ImportDescriptors = NULL,
         .Analysis          = pTempAnalysis,
-        .status            = STATUS_SUCCESS
+        .status            = SUCCESS_STATUS
     };
 }
 

@@ -75,8 +75,8 @@ typedef struct {
 //-----------------------------------------------------
 
 typedef enum {
-    STATUS_SUCCESS  = 0,
-    STATUS_ERROR    = -1
+    SUCCESS_STATUS  = 0,
+    ERROR_STATUS    = -1
 } STATUS;
 
 // Parser Object
@@ -93,8 +93,7 @@ typedef struct {
 
 //------------------------------------Public-APIs-------------------------------------
 // Core
-void* LoadPEDiskImage(char* PEpath, size_t* outSizes);
-HANDLER* CreateHandler(void* base, size_t size);
+HANDLER* initPEAnalyzer(char* pe_path);
 
 // Main Parser
 int MainPEHeadersParser(HANDLER* handler);                     // Headers Parsing *(Executing the Parsers)*

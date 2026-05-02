@@ -9,7 +9,7 @@ int DosHeaderParser(HANDLER* handler)
     if (!IsValidRange(handler->DiskPEImage->DiskImageSize, 0, sizeof(MY_IMAGE_DOS_HEADER))) 
     {
         fprintf(stderr, "[-] Error: DOS header exceeds File bounds\n");
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     MY_IMAGE_DOS_HEADER* pTempDosHeader = (MY_IMAGE_DOS_HEADER*)handler->DiskPEImage->DiskImageBase;
@@ -18,14 +18,14 @@ int DosHeaderParser(HANDLER* handler)
     if (pTempDosHeader->e_magic != MY_IMAGE_DOS_SIGNATURE) {
             fprintf(stderr, "[-] Error: Invalid Dos Header - e_magic is Incorrect: 0x%X\n", pTempDosHeader->e_magic);
 
-            return STATUS_ERROR;
+            return ERROR_STATUS;
     }
 
     // Validate NT-Header Offset
     if (pTempDosHeader->e_lfanew == 0) {
         fprintf(stderr, "[-] Error: Invalid e_lfanew (no NT header offset)..\n");
 
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
     
     handler->PEContext->Headers = calloc(1, sizeof(PE_HEADERS_CONTEXT));
@@ -33,7 +33,42 @@ int DosHeaderParser(HANDLER* handler)
     // Map Dos-Header
     handler->PEContext->Headers->DosHeader = pTempDosHeader;
     
-    return STATUS_SUCCESS;
+    return SUCCESS_STATUS;
+}
+
+
+// Extract DOS-Stub Header 
+int ExtractDosStub(HANDLER* handler) 
+{
+    uint8_t* stub_start = (uint8_t*)handler->DiskPEImage->DiskImageBase + sizeof(MY_IMAGE_DOS_HEADER);
+    uint8_t* stub_end = RVA_TO_VA(handler->DiskPEImage->DiskImageBase, handler->PEContext->Headers->DosHeader->e_lfanew);
+
+    const char* target = "This program cannot be run in DOS mode.";
+    size_t target_size = strlen(target);
+
+    int8_t* found = NULL;
+
+    for (uint8_t* p = stub_start; p < stub_end - target_size; p++)
+    {
+        if (memcmp(p, target, target_size) == 0)
+        {
+            found = p;
+            break;
+        }
+    }
+    
+    if (memcmp(found, target, target_size) == 0)
+    {
+        printf("\n[+] Successfully Extracted Dos-Stub! :) \n\n");
+        printf("DOS STUB: %s\n\n", found);
+    }
+    
+    else {
+        printf("\n[-] Error: Failed to Extract DOS-Stub :( \n\n");
+        return ERROR_STATUS;
+    }
+
+    return SUCCESS_STATUS;
 }
 
 
@@ -46,7 +81,7 @@ int NTHeadersParser(HANDLER* handler)
     if (!IsValidRange(handler->DiskPEImage->DiskImageSize, nt_offset, sizeof(MY_IMAGE_NT_HEADERS64)))
     {
         fprintf(stderr, "[-] Error: NT Headers exceed File Bounds\n");
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     MY_IMAGE_NT_HEADERS64* pTempNTHeaders = (MY_IMAGE_NT_HEADERS64*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, nt_offset));
@@ -55,15 +90,15 @@ int NTHeadersParser(HANDLER* handler)
     if (pTempNTHeaders->Signature != MY_IMAGE_NT_SIGNATURE)
     {
         fprintf(stderr, "[-] Error: Invalid PE signature\n");
-        return STATUS_ERROR; 
+        return ERROR_STATUS; 
     }
     
     // File Header Parsing
-    if (FileHeaderParser(&pTempNTHeaders->FileHeader) == STATUS_ERROR)
+    if (FileHeaderParser(&pTempNTHeaders->FileHeader) == ERROR_STATUS)
     {
         fprintf(stderr, "[-] Error: File Header analysis Failed\n");
         
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     // Map File Header
@@ -75,7 +110,7 @@ int NTHeadersParser(HANDLER* handler)
     // Optional Header Parsing call is done outside NT Header parser
     handler->PEContext->Headers->OptionalHeader = &pTempNTHeaders->OptionalHeader;
 
-    return STATUS_SUCCESS;
+    return SUCCESS_STATUS;
 }
 
 
@@ -87,7 +122,7 @@ int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
     {
         fprintf(stderr, "[-] Error: Invalid NumberOfSections (1 <-> 96): %hu\n", pFileHeader->NumberOfSections);
 
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     // Ensure Optional Header size is non-zero to correctly calculate the offset of the Section Table
@@ -95,19 +130,53 @@ int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
     {
         fprintf(stderr, "[!] Critical: SizeOfOptionalHeader is 0. Cannot locate Section Table.\n");
 
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
     
     fprintf(stdout, "[+] File Header Parsing completed Successfully!\n");
 
-    return STATUS_SUCCESS;
+    return SUCCESS_STATUS;
+}
+
+
+// Optional Header Parser Caller
+int OptionalHeaderInitializer(HANDLER* handler)
+{
+    // Optional Header Parsing
+    int32_t nt_offset = handler->PEContext->Headers->DosHeader->e_lfanew;
+    MY_IMAGE_NT_HEADERS64* pTempNTHeaders = (MY_IMAGE_NT_HEADERS64*)(RVA_TO_VA(handler->DiskPEImage->DiskImageBase, nt_offset));
+
+    TABLES_ANALYSIS_RESULTS OptionalHeaderResults = OptionalHeaderParser(handler, &pTempNTHeaders->OptionalHeader);
+
+    if (OptionalHeaderResults.status == ERROR_STATUS)
+    {   
+        fprintf(stderr, "[-] Error: Optional Header analysis Failed!\n");
+
+        FreeAnalysis(OptionalHeaderResults.Analysis);
+        return ERROR_STATUS;
+    }
+    
+    // Map DataDirectory entries *(Export/Import)*
+    handler->PEContext->Headers->ExportDirectory = OptionalHeaderResults.ExportDirectory;
+
+    // Map Import Descriptor if successfully resolved
+    if (OptionalHeaderResults.ImportDescriptors)
+    {
+        handler->PEContext->Headers->ImportDescriptors = OptionalHeaderResults.ImportDescriptors;   
+    }
+
+    // transfer Pointer OwnerShip 
+    handler->PEContext->Analysis = OptionalHeaderResults.Analysis;
+    
+    // Detach double pointer to memory
+    OptionalHeaderResults.Analysis = NULL;
 }
 
 
 // Optional-Header Parser *(Inside NT Headers)* 
 TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL_HEADER64* pTempOptionalHeader)
 {
-    TABLES_ANALYSIS_RESULTS ERROR_RESULT = {.status=STATUS_ERROR};
+    TABLES_ANALYSIS_RESULTS ERROR_RESULT = {.status=ERROR_STATUS};
 
     // Validate PE 64-bit pTempOptionalHeader Magic 
     if (pTempOptionalHeader->Magic != MY_IMAGE_NT_OPTIONAL_HDR64_MAGIC)
@@ -218,7 +287,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     {
         TempExportResults = ExportDirectoryParser(handler, pTempExportDirectory);
 
-        if (TempExportResults.status == STATUS_SUCCESS)
+        if (TempExportResults.status == SUCCESS_STATUS)
         {
             fprintf(stdout, "[+] Export Directories parsing completed Successfully!\n");
 
@@ -230,7 +299,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
         }
     }
 
-    if (TempExportResults.status == STATUS_ERROR)
+    if (TempExportResults.status == ERROR_STATUS)
     {
         fprintf(stderr, "[-] Error: Failed to analyze Export Table\n");
     }  
@@ -240,7 +309,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     {
         TempImportResults = ImportDescriptorsParser(handler, pTempImportDescriptors);
 
-        if (TempImportResults.status == STATUS_SUCCESS)
+        if (TempImportResults.status == SUCCESS_STATUS)
         {
             fprintf(stdout, "[+] Import Descriptors parsing completed Successfully!\n");
 
@@ -260,7 +329,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
         return ERROR_RESULT;
     }
     
-    if (TempExportResults.status == STATUS_SUCCESS && TempExportResults.Analysis)
+    if (TempExportResults.status == SUCCESS_STATUS && TempExportResults.Analysis)
     {
         // Transfer ownership
         OptionalHeaderResults.Analysis->ParsedExportDirectory = TempExportResults.Analysis->ParsedExportDirectory;
@@ -272,7 +341,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
         free(TempExportResults.Analysis);
     }
 
-    if (TempImportResults.status == STATUS_SUCCESS && TempImportResults.Analysis)
+    if (TempImportResults.status == SUCCESS_STATUS && TempImportResults.Analysis)
     {   
         // Transfer ownership
         OptionalHeaderResults.Analysis->ParsedImportDescriptors = TempImportResults.Analysis->ParsedImportDescriptors; // Makes it point to the same memory address TempImportResults.Analysis->ParsedImportDescriptors points to..
@@ -283,8 +352,6 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
         // Free temporary container (no longer owns any heap data)
         free(TempImportResults.Analysis);
     }
-
-    fprintf(stdout, "[+] Optional Header Parsing completed Successfully!\n");
 
     return OptionalHeaderResults;
 }

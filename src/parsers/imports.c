@@ -3,7 +3,7 @@
 #define MAX_IMPORT_DESCRIPTORS 4096
 
 
-//============================================================Imports-Parsers============================================================
+//========================================================Imports-Parsers========================================================
 
 static uint32_t GetImportDescriptorsCount(
     MY_IMAGE_IMPORT_DESCRIPTOR* desc,
@@ -41,7 +41,7 @@ static uint32_t GetImportDescriptorsCount(
 // Import Descriptors Parser *(INT/IAT per DLL)* 
 TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPORT_DESCRIPTOR* pTempImportDescriptors)
 {
-    TABLES_ANALYSIS_RESULTS ERROR_RESULT = {.status=STATUS_ERROR};
+    TABLES_ANALYSIS_RESULTS ERROR_RESULT = {.status=ERROR_STATUS};
     
     ANALYSIS_CONTEXT* pTempAnalysisImportResult = calloc(1, sizeof(ANALYSIS_CONTEXT));
     if (!pTempAnalysisImportResult) 
@@ -168,7 +168,7 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     return (TABLES_ANALYSIS_RESULTS){
         .ImportDescsCount  = TempImportDescsCount,
         .Analysis          = pTempAnalysisImportResult,
-        .status            = STATUS_SUCCESS
+        .status            = SUCCESS_STATUS
     };
 }
 
@@ -180,7 +180,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
         fprintf(stderr,
             "[-] Error: pTempParsedImportDescriptor is NULL\n");
         
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     if (!pTempParsedImportDescriptor->INT)
@@ -189,7 +189,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
             "[-] Error: INT pointer: %p is NULL (FirstThunk missing)\n",
             pTempParsedImportDescriptor->INT);
             
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     if (!pTempParsedImportDescriptor->IAT)
@@ -198,7 +198,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
             "[-] Error: IAT pointer: %p is NULL (FirstThunk missing)\n",
             pTempParsedImportDescriptor->IAT);
 
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     MY_IMAGE_THUNK_DATA64* INTthunks = pTempParsedImportDescriptor->INT;
@@ -225,7 +225,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     {
         fprintf(stderr, "[-] Error: Failed to allocate Functions array\n");
 
-        return STATUS_ERROR;
+        return ERROR_STATUS;
     }
 
     // Reduces Memory Access Overhead
@@ -297,7 +297,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
                     offset,
                     (unsigned long long)handler->DiskPEImage->DiskImageSize
                 );
-                return STATUS_ERROR;
+                return ERROR_STATUS;
             }
 
             INTentry = (MY_IMAGE_IMPORT_BY_NAME*)
@@ -320,7 +320,7 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
                     "[-] Invalid INT entry at index %u\n",
                     i
                 );
-                return STATUS_ERROR;
+                return ERROR_STATUS;
             }
 
             pTempFunctions[i].IsOrdinal = 0;
@@ -352,5 +352,5 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
         }
     }
 
-    return STATUS_SUCCESS;
+    return SUCCESS_STATUS;
 }
