@@ -60,7 +60,7 @@ int ExtractDosStub(HANDLER* handler)
     if (memcmp(found, target, target_size) == 0)
     {
         printf("\n[+] Successfully Extracted Dos-Stub! :) \n\n");
-        printf("DOS STUB: %s\n\n", found);
+        printf("DOS STUB Message: %s\n\n", found);
     }
     
     else {
