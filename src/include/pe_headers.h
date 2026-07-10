@@ -15,7 +15,7 @@
 
 // Signatures *(Magic Numbers)*
 #define MY_IMAGE_DOS_SIGNATURE  0x5A4D                 // DOS Signature
-#define MY_IMAGE_NT_SIGNATURE   0x00004550             // PE Signature
+#define MY_IMAGE_NT_SIGNATURE   0x4550             // PE Signature
 
 // The Size of DataDirectory at the end of Optional Headers
 #define MY_IMAGE_NUMBEROF_DIRECTORY_ENTRIES 16           

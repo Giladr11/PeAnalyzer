@@ -1,9 +1,8 @@
 #include "include/internals.h"
 
-
 //============================================================Sections-Parsers============================================================
 
-int SectionHeadersParser(HANDLER* handler)
+STATUS SectionHeadersParser(HANDLER* handler)
 {
     if (!handler || !handler->DiskPEImage || !handler->DiskPEImage->DiskImageBase)
     {

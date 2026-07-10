@@ -59,6 +59,7 @@ int main(int argc, char* argv[])
     if (!handler)
     {
         fprintf(stderr, "[-] Error: Failed to Initialize PE-Analyzer!\n");
+        clean_heap(handler);
         return ERROR_STATUS;
     }
 
@@ -66,6 +67,7 @@ int main(int argc, char* argv[])
     int status = ExecuteParsingPhase(handler);
     if (status == ERROR_STATUS)
     {
+        clean_heap(handler);
         return ERROR_STATUS;
     }
     
@@ -73,6 +75,7 @@ int main(int argc, char* argv[])
     status = ExecuteDumpingPhase(handler);
     if (status == ERROR_STATUS)
     {
+        clean_heap(handler);
         return ERROR_STATUS;
     }
 

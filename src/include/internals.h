@@ -28,20 +28,18 @@ typedef struct {
     STATUS status;                                     // Parsing/validation status for export/import processing
 } TABLES_ANALYSIS_RESULTS;
 
-
 //--------------------------------Internal-Parsing-Routines---------------------------------
 
 // Parse Functions *(Validate & Map (PE headers & RVAs) from 'RawImage' into a 'PEObj')*
-int DosHeaderParser(HANDLER* handler);
+STATUS DosHeaderParser(HANDLER* handler);
 
 // Extract DOS Stub Header ("This program cannot be run in DOS mode.")
-int DosStubParser(HANDLER* handler);
+STATUS DosStubParser(HANDLER* handler);
 
-int NTHeadersParser(HANDLER* handler);
-int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader);
-int OptionalHeaderInitializer(HANDLER* handler);
+STATUS NTHeadersParser(HANDLER* handler);
+STATUS FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader);
+STATUS OptionalHeaderInitializer(HANDLER* handler);
 TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL_HEADER64* pTempOptionalHeader);
-
 
 // Exports & Imports
 //---DataDirectory[1] & (EAT)-Parser---------------------
@@ -59,24 +57,22 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
 STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempParsedImportDescriptors);                 // Parse INT & IAT Per one Descriptor (one dll)
 //-------------------------------------------------------
 
-
-int SectionHeadersParser(HANDLER* handler);
-
+STATUS SectionHeadersParser(HANDLER* handler);
 
 //----------------------------Internal-Context-Dumping----------------------------------
 
 // Context Dumping
-int DumpDosHeader(PE_CONTEXT* PEContext);
-int DumpDosStub(PE_CONTEXT* PEContext);
-int DumpNTHeaders(PE_CONTEXT* PEContext);
-int DumpFileHeader(PE_CONTEXT* PEContext);
-int DumpOptionalHeader(PE_CONTEXT* PEContext);
+STATUS DumpDosHeader(MY_IMAGE_DOS_HEADER* dos_header);
+STATUS DumpDosStub(char* dos_stub);
+STATUS DumpNTHeaders(PE_CONTEXT* PeContext);
+STATUS DumpFileHeader(MY_IMAGE_FILE_HEADER* file_header);
+STATUS DumpOptionalHeader(MY_IMAGE_OPTIONAL_HEADER64* optional_header);
+STATUS DumpSectionHeader(MY_IMAGE_SECTION_HEADER* sections_header, uint16_t NumberOfSections);
 
 // Analysis Dumping
-int DumpEAT();
-int DumpINT();
-int DumpIAT();
-
+STATUS DumpEAT();
+STATUS DumpINT();
+STATUS DumpIAT();
 
 //--------------------------------Internal-Helpers--------------------------------------
 

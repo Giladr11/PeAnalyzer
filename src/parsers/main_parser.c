@@ -2,7 +2,7 @@
 
 //============================================================Main-Parsers============================================================
 
-int MainPEHeadersParser(HANDLER* handler)
+STATUS MainPEHeadersParser(HANDLER* handler)
 {
     // Dos Header Parsing
     if (DosHeaderParser(handler) == ERROR_STATUS){
@@ -34,7 +34,6 @@ int MainPEHeadersParser(HANDLER* handler)
         return ERROR_STATUS;
     }
     fprintf(stdout, "[+] Optional Header Parsing has completed Successfully!\n");
-
 
     return SUCCESS_STATUS;
 }

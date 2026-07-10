@@ -76,8 +76,8 @@ typedef struct {
 //-----------------------------------------------------
 
 typedef enum {
+    ERROR_STATUS    = -1,
     SUCCESS_STATUS  = 0,
-    ERROR_STATUS    = -1
 } STATUS;
 
 // Parser Object
@@ -98,10 +98,10 @@ HANDLER* initPEAnalyzer(char* pe_path);
 void clean_heap(HANDLER* handler);
 
 // Main Parser
-int MainPEHeadersParser(HANDLER* handler);                     // Headers Parsing *(Executing the Parsers)*
+STATUS MainPEHeadersParser(HANDLER* handler);                     // Headers Parsing *(Executing the Parsers)*
 
 // Main Dumper
-int MainPEContextDumper(PE_CONTEXT* PEContext);                // PE Dumping *(Printing the PE_CONTEXT that was established)*
+STATUS MainPEContextDumper(PE_CONTEXT* PEContext);                // PE Dumping *(Printing the PE_CONTEXT that was established)*
 
 // Ownership Models
 void FreeAnalysis(ANALYSIS_CONTEXT* a);

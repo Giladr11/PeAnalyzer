@@ -4,7 +4,7 @@
 //============================================================Headers-Parsers============================================================
 
 // DOS-Header Parser
-int DosHeaderParser(HANDLER* handler) 
+STATUS DosHeaderParser(HANDLER* handler) 
 {
     if (!IsValidRange(handler->DiskPEImage->DiskImageSize, 0, sizeof(MY_IMAGE_DOS_HEADER))) 
     {
@@ -38,7 +38,7 @@ int DosHeaderParser(HANDLER* handler)
 
 
 // Extract DOS-Stub Header 
-int DosStubParser(HANDLER* handler) 
+STATUS DosStubParser(HANDLER* handler) 
 {
     uint8_t* stub_start = (uint8_t*)handler->DiskPEImage->DiskImageBase + sizeof(MY_IMAGE_DOS_HEADER);
     uint8_t* stub_end = RVA_TO_VA(handler->DiskPEImage->DiskImageBase, handler->PEContext->Headers->DosHeader->e_lfanew);
@@ -79,7 +79,7 @@ int DosStubParser(HANDLER* handler)
 
 
 // NT-Headers Parser
-int NTHeadersParser(HANDLER* handler)
+STATUS NTHeadersParser(HANDLER* handler)
 {
     // Extract NT Headers Offset from Dos Header
     uint32_t nt_offset = handler->PEContext->Headers->DosHeader->e_lfanew;
@@ -123,7 +123,7 @@ int NTHeadersParser(HANDLER* handler)
 
 
 // File-Header Parser *(Inside NT Headers)* 
-int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
+STATUS FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
 {   
     // Validate section count: Windows loader standard limit is 96 sections to prevent malformed file overhead
     if (pFileHeader->NumberOfSections < 1 || pFileHeader->NumberOfSections > 96)
@@ -148,7 +148,7 @@ int FileHeaderParser(MY_IMAGE_FILE_HEADER* pFileHeader)
 
 
 // Optional Header Parser Caller
-int OptionalHeaderInitializer(HANDLER* handler)
+STATUS OptionalHeaderInitializer(HANDLER* handler)
 {
     // Optional Header Parsing
     int32_t nt_offset = handler->PEContext->Headers->DosHeader->e_lfanew;

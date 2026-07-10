@@ -13,32 +13,12 @@ TESTS_DIR   = tests
 UTILS_DIR   = utils
  
 #---SRC---------------------------------------
-
-# MAIN C FILES
-MAIN_C = $(SRC_DIR)/main.c
-
-# CORE C FILES 
-CORE_C = $(SRC_DIR)/$(CORE_DIR)/core.c
-
-# PARSERS C FILES 
-HEADERS_C  = $(SRC_DIR)/$(PARSERS_DIR)/headers.c
-EXPORTS_C  = $(SRC_DIR)/$(PARSERS_DIR)/exports.c
-IMPORTS_C  = $(SRC_DIR)/$(PARSERS_DIR)/imports.c
-SECTIONS_C = $(SRC_DIR)/$(PARSERS_DIR)/sections.c
-
-# DUMPERS C FILES
-
-
-# UTILS C FILES
-UTILS_C = $(SRC_DIR)/$(UTILS_DIR)/utils.c
-
-# TESTS C FILES
-TESTS_C = $(SRC_DIR)/$(TESTS_DIR)/tests.c
-
 SOURCES_C = \
 	$(wildcard src/*.c) \
 	$(wildcard src/*/*.c) \
 	$(wildcard src/*/*/*.c)
+
+HEADER_FILES = $(wildcard src/include/*.h)
 
 #---BUILD-------------------------------------
 
@@ -75,7 +55,7 @@ all: $(UTILS_OBJ) $(PE_ANLYZER_EXE)
 $(PE_ANLYZER_EXE): $(UTILS_OBJ) $(OBJECTS_C)  
 	$(GCC_CMD) $(OBJECTS_C) -o $(PE_ANLYZER_EXE)
  	
-$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c $(HEADER_FILES)
 	$(GCC_CMD) -c $< -o $@
 
 clean:
