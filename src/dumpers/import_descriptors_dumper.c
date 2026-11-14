@@ -28,7 +28,7 @@ STATUS DumpImportDescriptors(PE_PARSED_IMPORT_DESCRIPTOR* parsed_import_descript
         uint32_t count = 1;
         for (size_t i = 0; i < ImportDescsCount; i++)
         {
-                printf("\nDll number: %d", count);
+                printf("\nDll count: %d", count);
                 if(DumpDllFunctions(parsed_import_descriptors[i].DllName, parsed_import_descriptors[i].Functions, parsed_import_descriptors[i].FunctionsCount) == ERROR_STATUS)
                 {
                         return ERROR_STATUS;

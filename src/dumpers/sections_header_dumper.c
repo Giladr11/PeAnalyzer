@@ -4,12 +4,12 @@
 
 STATUS DumpSectionHeader(MY_IMAGE_SECTION_HEADER* sections_header, uint16_t NumberOfSections)
 {
-    printf("\n=====================Sections-Header-Dumping=======================");
+    printf("\n==========Sections-Header-Dumping==========");
 
     MY_IMAGE_SECTION_HEADER* tmp_sections_header = sections_header;
     for (size_t i = 0; i < NumberOfSections; i++)
     {
-        printf("\nSection Number: %zu\n", i);
+        printf("\nSection count: %zu\n", i);
 
         printf("Name: %.8s\n", tmp_sections_header->Name);
 

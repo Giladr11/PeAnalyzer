@@ -62,21 +62,21 @@ STATUS DumpNTHeaders(PE_CONTEXT* PeContext)
     printf("\n==========File-Header-Dumping===========\n");
     if (DumpFileHeader(PeContext->Headers->FileHeader) == ERROR_STATUS)
     {
-        fprintf(stderr, "\nFailed to dump File Header...\n");
+        fprintf(stderr, "\n[-] Error: Failed to dump File Header...\n");
         return ERROR_STATUS;
     }
 
     printf("\n========Optional-Header-Dumping=========\n");
     if (DumpOptionalHeader(PeContext->Headers->OptionalHeader) == ERROR_STATUS)
     {
-        fprintf(stderr, "\nFailed to dump Optional Header...\n");
+        fprintf(stderr, "\n[-] Error: Failed to dump Optional Header...\n");
         return ERROR_STATUS;
     }
 
     /*DataDirectory Dumping*/
     if (DumpImportDescriptors(PeContext->Analysis->ParsedImportDescriptors, PeContext->Analysis->ImportDescsCount) == ERROR_STATUS)
     {
-        fprintf(stderr, "\nFailed to dump Import Descriptors...\n");
+        fprintf(stderr, "\n[-] Error: Failed to dump Import Descriptors...\n");
         return ERROR_STATUS;
     }
 
@@ -84,13 +84,13 @@ STATUS DumpNTHeaders(PE_CONTEXT* PeContext)
     printf("\n========Export-Directory-Dumping=========\n");
     uint16_t dll_type = 0x2000;
     if(PeContext->Headers->FileHeader->Characteristics ^ dll_type){
-        fprintf(stderr, "Failed to dump Export Directory...\n");
-        fprintf(stderr, "This PE is not a DLL..\n");
+        fprintf(stderr, "[-] Error: Failed to dump Export Directory...\n");
+        fprintf(stderr, "[-] Valid Because this PE is not a DLL..\n");
         goto success;
     }
     if (DumpExportDirectory(PeContext->Analysis->ParsedExportDirectory) == ERROR_STATUS)
     {
-        fprintf(stderr, "\nFailed to dump Export Directory...\n");
+        fprintf(stderr, "\n[-] Error: Failed to dump Export Directory...\n");
         return ERROR_STATUS;
     }
 
