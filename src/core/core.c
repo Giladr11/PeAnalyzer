@@ -87,7 +87,7 @@ HANDLER* InitializeHandler(void* pe_base, size_t pe_size)
 
 void clean_heap(HANDLER* handler) 
 {
-    printf("\nCleaning heap memory...");
+    printf("\nCleaning Allocated heap memory...");
     FreeAnalysis(handler->PEContext->Analysis);
     FreeParsedExportDirectoryAnalysis(handler->PEContext->Analysis->ParsedExportDirectory);
     

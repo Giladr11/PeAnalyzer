@@ -309,11 +309,6 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
         }
     }
 
-    if (TempExportResults.status == ERROR_STATUS)
-    {
-        fprintf(stderr, "[-] Error: Failed to analyze Export Table\n");
-    }  
-    
     // Proceed To Execute (Import Table) Parser *(After Export Table Parser Succeeded)*
     if (pTempImportDescriptors) 
     {
@@ -355,6 +350,7 @@ TABLES_ANALYSIS_RESULTS OptionalHeaderParser(HANDLER* handler, MY_IMAGE_OPTIONAL
     {   
         // Transfer ownership
         OptionalHeaderResults.Analysis->ParsedImportDescriptors = TempImportResults.Analysis->ParsedImportDescriptors; // Makes it point to the same memory address TempImportResults.Analysis->ParsedImportDescriptors points to..
+        OptionalHeaderResults.Analysis->ImportDescsCount = TempImportResults.Analysis->ImportDescsCount;
 
         // Detach double pointer to memory
         TempImportResults.Analysis->ParsedImportDescriptors = NULL;

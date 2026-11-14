@@ -31,7 +31,7 @@ uint32_t RvaToOffset(uint32_t rva, MY_IMAGE_SECTION_HEADER* sections, uint16_t n
     return 0;
 }
 
-// free Helpers
+// Free Helpers
 void FreeAnalysis(ANALYSIS_CONTEXT* a) {
     if (!a) return;
 

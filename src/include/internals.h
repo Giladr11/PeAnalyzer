@@ -67,12 +67,12 @@ STATUS DumpDosStub(char* dos_stub);
 STATUS DumpNTHeaders(PE_CONTEXT* PeContext);
 STATUS DumpFileHeader(MY_IMAGE_FILE_HEADER* file_header);
 STATUS DumpOptionalHeader(MY_IMAGE_OPTIONAL_HEADER64* optional_header);
+STATUS DumpExportDirectory(PE_PARSED_EXPORT_DIRECTORY* parsed_export_directory);
+STATUS DumpImportDescriptors(PE_PARSED_IMPORT_DESCRIPTOR* parsed_import_descriptors, uint32_t ImportDescsCount);
 STATUS DumpSectionHeader(MY_IMAGE_SECTION_HEADER* sections_header, uint16_t NumberOfSections);
 
 // Analysis Dumping
 STATUS DumpEAT();
-STATUS DumpINT();
-STATUS DumpIAT();
 
 //--------------------------------Internal-Helpers--------------------------------------
 

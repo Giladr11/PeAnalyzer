@@ -38,7 +38,7 @@ int ExecuteDumpingPhase(HANDLER* handler)
         return ERROR_STATUS;
     }
 
-    fprintf(stdout, "[++] Context Dumping has Completed Succesfully!\n");
+    fprintf(stdout, "\n[++] Context Dumping has Completed Succesfully!\n\n");
 
     return SUCCESS_STATUS;
 }
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
     if (!handler)
     {
         fprintf(stderr, "[-] Error: Failed to Initialize PE-Analyzer!\n");
-        clean_heap(handler);
+        goto clean_heap;
         return ERROR_STATUS;
     }
 
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     int status = ExecuteParsingPhase(handler);
     if (status == ERROR_STATUS)
     {
-        clean_heap(handler);
+        goto clean_heap;
         return ERROR_STATUS;
     }
     
@@ -75,13 +75,21 @@ int main(int argc, char* argv[])
     status = ExecuteDumpingPhase(handler);
     if (status == ERROR_STATUS)
     {
-        clean_heap(handler);
+        goto clean_heap;
         return ERROR_STATUS;
     }
 
-    // Cleaning Phase
-    clean_heap(handler);
-
+clean_heap:
+    printf("\nCleaning Allocated heap memory...");
+    FreeAnalysis(handler->PEContext->Analysis);
+    FreeParsedExportDirectoryAnalysis(handler->PEContext->Analysis->ParsedExportDirectory);
+    
+    free(handler->PEContext->Headers->DosStub);
+    free(handler->PEContext->Headers);
+    
+    free(handler->DiskPEImage);
+    free(handler->PEContext);
+    free(handler);
     printf("\n=======================PE-Analysis-Completed=======================\n");  
 
     return SUCCESS_STATUS;

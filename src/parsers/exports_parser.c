@@ -132,7 +132,7 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
         .OrdinalsBase          = base_ordinal,
         .AddressOfNameOrdinals = TempAddressOfNameOrdinals
     };
-
+    
     ANALYSIS_CONTEXT* pTempAnalysisExportResult = calloc(1, sizeof(ANALYSIS_CONTEXT));
     if (!pTempAnalysisExportResult) 
     {
@@ -147,6 +147,5 @@ ANALYSIS_CONTEXT* EATParser(HANDLER* handler, MY_IMAGE_EXPORT_DIRECTORY* pTempEx
     }
 
     *pTempAnalysisExportResult->ParsedExportDirectory = TempParsedExportDirectory;
-
     return pTempAnalysisExportResult;
 }

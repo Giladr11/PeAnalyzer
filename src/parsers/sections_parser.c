@@ -28,7 +28,7 @@ STATUS SectionHeadersParser(HANDLER* handler)
 
     MY_IMAGE_SECTION_HEADER* pTempSectionHeader =
         (MY_IMAGE_SECTION_HEADER*)((uint8_t*)nt +
-        4 + // signature
+        4 + // PE signature
         sizeof(MY_IMAGE_FILE_HEADER) +
         nt->FileHeader.SizeOfOptionalHeader);
     

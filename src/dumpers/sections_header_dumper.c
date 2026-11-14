@@ -4,7 +4,7 @@
 
 STATUS DumpSectionHeader(MY_IMAGE_SECTION_HEADER* sections_header, uint16_t NumberOfSections)
 {
-    printf("\n=====================Sections-Header-Dumping=======================\n");
+    printf("\n=====================Sections-Header-Dumping=======================");
 
     MY_IMAGE_SECTION_HEADER* tmp_sections_header = sections_header;
     for (size_t i = 0; i < NumberOfSections; i++)
@@ -13,12 +13,12 @@ STATUS DumpSectionHeader(MY_IMAGE_SECTION_HEADER* sections_header, uint16_t Numb
 
         printf("Name: %.8s\n", tmp_sections_header->Name);
 
-        printf("VirtualSize:       0x%08X\n", tmp_sections_header->Misc.VirtualSize);
-        printf("PhysicalAddress:   0x%08X\n", tmp_sections_header->Misc.PhysicalAddress);
+        printf("VirtualSize:          0x%08X\n", tmp_sections_header->Misc.VirtualSize);
+        printf("PhysicalAddress:      0x%08X\n", tmp_sections_header->Misc.PhysicalAddress);
         
-        printf("VirtualAddress:    0x%08X\n", tmp_sections_header->VirtualAddress);
-        printf("SizeOfRawData:     0x%08X\n", tmp_sections_header->SizeOfRawData);
-        printf("PointerToRawData:  0x%08X\n", tmp_sections_header->PointerToRawData);
+        printf("VirtualAddress:       0x%08X\n", tmp_sections_header->VirtualAddress);
+        printf("SizeOfRawData:        0x%08X\n", tmp_sections_header->SizeOfRawData);
+        printf("PointerToRawData:     0x%08X\n", tmp_sections_header->PointerToRawData);
         
         printf("PointerToRelocations: 0x%08X\n", tmp_sections_header->PointerToRelocations);
         printf("PointerToLinenumbers: 0x%08X\n", tmp_sections_header->PointerToLinenumbers);
@@ -26,7 +26,7 @@ STATUS DumpSectionHeader(MY_IMAGE_SECTION_HEADER* sections_header, uint16_t Numb
         printf("NumberOfRelocations:  %u\n", tmp_sections_header->NumberOfRelocations);
         printf("NumberOfLinenumbers:  %u\n", tmp_sections_header->NumberOfLinenumbers);
         
-        printf("Characteristics:   0x%08X\n", tmp_sections_header->Characteristics);
+        printf("Characteristics:      0x%08X\n", tmp_sections_header->Characteristics);
 
         tmp_sections_header++;
     }

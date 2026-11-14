@@ -55,7 +55,7 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
                                     handler->DiskPEImage->DiskImageBase,
                                     handler->DiskPEImage->DiskImageSize
                                 );
-
+    
     if (!TempImportDescsCount)
     {
         fprintf(stderr, "[-] Error: No import descriptors found\n");
@@ -63,6 +63,7 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
         free(pTempAnalysisImportResult);
         return ERROR_RESULT;
     }
+    pTempAnalysisImportResult->ImportDescsCount = TempImportDescsCount;
     
     // Allocate inner ParsedImportDescriptors
     pTempAnalysisImportResult->ParsedImportDescriptors = calloc(TempImportDescsCount, sizeof(PE_PARSED_IMPORT_DESCRIPTOR)); // free in main()
@@ -79,13 +80,13 @@ TABLES_ANALYSIS_RESULTS ImportDescriptorsParser(HANDLER* handler, MY_IMAGE_IMPOR
     
     for (uint32_t i = 0; i < TempImportDescsCount; i++)
     {   
-        uint32_t offsetset = RvaToOffset(
+        uint32_t offset = RvaToOffset(
             pTempImportDescriptors[i].Name,
             handler->PEContext->Headers->SectionHeaders,
             handler->PEContext->Headers->FileHeader->NumberOfSections
         );
         
-        uint8_t* addr = base + offsetset;
+        uint8_t* addr = base + offset;
 
         if (!addr || addr < base || addr >= (base + handler->DiskPEImage->DiskImageSize))
         {
@@ -238,55 +239,24 @@ STATUS ThunkTablesParser(HANDLER* handler, PE_PARSED_IMPORT_DESCRIPTOR* pTempPar
     {
         uint64_t value = INTthunks[i].u1.AddressOfData;
 
-        //fprintf(stderr,
-        //    "\n[DEBUG] ==== THUNK %u ====\n"
-        //    "[DEBUG] INT thunk ptr      : %p\n"
-        //    "[DEBUG] raw thunk value    : 0x%016llX\n",
-        //    i,
-        //    &INTthunks[i],
-        //    (unsigned long long)value
-        //);
-
         // ordinal import
         if (value & ordinalFlag)
         {
             uint16_t ordinal = (uint16_t)(value & 0xFFFF);
 
-            //fprintf(stderr,
-            //    "[DEBUG] ordinal import detected\n"
-            //    "[DEBUG] ordinal = %hu\n",
-            //    ordinal
-            //);
-
             pTempFunctions[i].IsOrdinal = 1;
             pTempFunctions[i].Ordinal = ordinal;
             pTempFunctions[i].FunctionName = NULL;
-
-            //fprintf(stdout,
-            //    "[+] Importing DLL Function Using ordinal: %hu\n",
-            //    ordinal
-            //);
         }
         else
         {
             uint32_t nameRva = (uint32_t)value;
-
-            //fprintf(stderr,
-            //    "[DEBUG] import-by-name\n"
-            //    "[DEBUG] Name RVA = 0x%08X\n",
-            //    nameRva
-            //);
 
             uint32_t offset = RvaToOffset(
                 nameRva,
                 handler->PEContext->Headers->SectionHeaders,
                 handler->PEContext->Headers->FileHeader->NumberOfSections
             );
-
-            //fprintf(stderr,
-            //    "[DEBUG] file offsetset = 0x%08X\n",
-            //    offset
-            //);
 
             if (offset == 0 || offset >= handler->DiskPEImage->DiskImageSize)
             {
